@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Golfers MVP</title>
+    <title>Golfers MVP - En Vivo</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -24,7 +24,7 @@
         <button id="btnLogin" class="btn-primary">Entrar al grupo <span>&gt;</span></button>
         <button id="btnRegister" class="btn-outline">Crear cuenta nueva</button>
         
-        <p class="disclaimer">Acceso exclusivo para miembros. Sin datos reales de pago en esta demo.</p>
+        <p class="disclaimer">Acceso exclusivo para miembros.</p>
         <div id="message"></div>
     </div>
 
@@ -35,7 +35,6 @@
             <button id="btnLogout" class="btn-text-small">Cerrar Sesión</button>
         </div>
         
-        <!-- Menú de Navegación -->
         <div class="nav-tabs">
             <button class="tab-btn active" id="tab-torneos">Torneos</button>
             <button class="tab-btn" id="tab-apuestas">Tickets</button>
@@ -45,20 +44,21 @@
 
         <!-- CONTENIDO A: Torneos -->
         <div id="content-torneos" class="tab-content">
-            <button id="btnSeedDb" class="btn-outline btn-seed mt-15">⚙️ Iniciar Base de Datos</button>
+            <!-- Botón para sincronizar y guardar la API en Firestore -->
+            <button id="btnSyncDb" class="btn-outline btn-seed mt-15">🔄 Sincronizar Torneo y Guardar en BD</button>
             
             <div class="header-section mt-15">
-                <h2>Torneos de la semana</h2>
-                <p class="subtitle-small">Apuesta de $4.000 a $150.000 COP · A más apuesta, más jugadores puedes escoger.</p>
+                <h2 style="display: flex; align-items: center; gap: 8px;">Torneo en Vivo <span class="live-dot"></span></h2>
+                <p class="subtitle-small">Datos oficiales del PGA Tour vía ESPN sincronizados en Firestore.</p>
             </div>
 
             <div class="tournament-box">
                 <div class="tournament-header">
-                    <h3 id="torneo-nombre" class="serif-title">Cargando...</h3>
+                    <h3 id="torneo-nombre" class="serif-title">Sincronizando...</h3>
                     <span class="badge">ABIERTO</span>
                 </div>
-                <span id="torneo-campo" class="tournament-label">Abierto para inscripción</span>
-                <button id="btnIrSeleccion" class="btn-outline mt-15">Elegir equipo e inscribirme</button>
+                <span id="torneo-campo" class="tournament-label">Conectando con servidores...</span>
+                <button id="btnIrSeleccion" class="btn-outline mt-15" disabled>Elegir equipo e inscribirme</button>
             </div>
         </div>
 
@@ -66,18 +66,14 @@
         <div id="content-apuestas" class="tab-content hidden">
             <h2 class="serif-title mt-15">Tus Tickets</h2>
             <p class="subtitle-small">Aquí verás los equipos que has armado para los torneos.</p>
-            <div id="mis-apuestas-list" class="tickets-container">
-                <p style="color: var(--texto-gris); font-size: 14px; text-align: center;">Cargando tus apuestas...</p>
-            </div>
+            <div id="mis-apuestas-list" class="tickets-container"></div>
         </div>
 
         <!-- CONTENIDO C: Clasificación -->
         <div id="content-ranking" class="tab-content hidden">
             <h2 class="serif-title mt-15">Leaderboard</h2>
-            <div class="empty-state">
-                <div class="logo-circle" style="background-color: #f3f4f6; color: #9ca3af; margin-bottom: 10px;">🏆</div>
-                <p style="color: var(--texto-gris); font-size: 14px;">El torneo aún no ha comenzado o no tienes puntos registrados.</p>
-            </div>
+            <p class="subtitle-small">Posiciones en vivo del torneo actual.</p>
+            <div id="ranking-list" class="ranking-container"></div>
         </div>
 
         <!-- CONTENIDO D: Catálogo de Premios -->
@@ -88,13 +84,8 @@
                 <div class="progress-bar"><div class="progress-fill" style="width: 49%;"></div></div>
                 <div style="font-size: 11px; margin-top: 8px; opacity: 0.8;">Faltan 2,550 pts para tu próxima recompensa</div>
             </div>
-            
             <h2 class="serif-title mt-15">Premios Disponibles</h2>
-            <p class="subtitle-small" style="margin-bottom: 15px;">Redime tus puntos ganados por equipamiento oficial.</p>
-            
-            <div id="catalogo-list" class="catalogo-container">
-                <!-- Los premios se cargarán aquí -->
-            </div>
+            <div id="catalogo-list" class="catalogo-container"></div>
         </div>
     </div>
 
@@ -107,13 +98,11 @@
         <div class="slider-container">
             <div class="amount-display" id="amountDisplay">$ 20,000 COP</div>
             <input type="range" id="betSlider" min="4000" max="150000" step="1000" value="20000">
-            
             <div class="tier-info">
                 <span>👥 <span id="rosterSizeDisplay">2</span> Jugadores</span>
                 <span>🚀 <span id="multiplierDisplay">5.0x</span> Puntos</span>
             </div>
         </div>
-
         <button id="btnSiguientePago" class="btn-primary">Continuar a Selección <span>&gt;</span></button>
     </div>
 
@@ -123,9 +112,7 @@
         <h2 class="serif-title">Arma tu equipo</h2>
         <p class="subtitle-small">Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
         
-        <div id="player-list" class="player-list">
-            <!-- Los jugadores se cargarán aquí -->
-        </div>
+        <div id="player-list" class="player-list"></div>
 
         <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi ticket <span>&gt;</span></button>
     </div>
@@ -142,25 +129,20 @@
             <div class="ticket-row"><span style="color:var(--texto-gris)">Multiplicador</span> <strong id="chk-multiplicador">1.0x</strong></div>
             <hr style="border: 0; border-top: 1px dashed var(--borde-suave); margin: 15px 0;">
             <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px;">Tu Equipo:</div>
-            <ul id="chk-equipo" class="equipo-list">
-                <!-- El equipo se lista aquí -->
-            </ul>
+            <ul id="chk-equipo" class="equipo-list"></ul>
         </div>
-
         <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: #111827;">Pagar con Bold <span>🔒</span></button>
     </div>
 
-    <!-- 6. ÉXITO / CONFIRMACIÓN -->
+    <!-- 6. ÉXITO -->
     <div id="success-screen" class="card text-center hidden">
         <div class="logo-circle" style="background-color: #10b981; margin-bottom: 20px;">✓</div>
         <h2 class="serif-title">¡Inscripción Confirmada!</h2>
         <p class="subtitle-small">Tu pago ha sido procesado con éxito y tu equipo ya está en la Copa.</p>
-        
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
             <span style="display:block; font-size:12px; color:#166534;">ID de Transacción Seguro</span>
             <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:14px; word-break: break-all;">...</strong>
         </div>
-
         <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
     </div>
 
