@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
@@ -175,7 +175,10 @@ async function cargarDatosPerfil(user) {
 
 document.getElementById('btnGuardarPerfil').addEventListener('click', async () => {
     const user = auth.currentUser;
-    if (!user) return;
+    if (!user) {
+        mostrarModal("Sesión Expirada", "Por favor inicia sesión nuevamente.", "🔒");
+        return;
+    }
 
     const nombre = document.getElementById('profile-nombre').value.trim();
     const apellido = document.getElementById('profile-apellido').value.trim();
@@ -187,15 +190,18 @@ document.getElementById('btnGuardarPerfil').addEventListener('click', async () =
 
     try {
         const userRef = doc(db, "users", user.uid);
-        await updateDoc(userRef, {
+        await setDoc(userRef, {
             nombre: nombre,
             apellido: apellido,
+            email: user.email,
             updated_at: serverTimestamp()
-        });
+        }, { merge: true });
+
         document.getElementById('user-name-display').textContent = `${nombre} ${apellido}`;
         mostrarModal("Perfil Actualizado", "Tus datos personales han sido guardados correctamente.", "✨");
     } catch (e) {
-        mostrarModal("Error", "No se pudo actualizar el perfil.", "❌");
+        console.error("Error detallado al actualizar perfil:", e);
+        mostrarModal("Error de Guardado", "No se pudo actualizar el perfil. Revisa tu conexión o permisos en Firestore.", "❌");
     }
 });
 
