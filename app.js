@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
@@ -34,7 +34,8 @@ const screens = {
     lobby: document.getElementById('lobby-screen'),
     seleccion: document.getElementById('seleccion-screen'),
     roster: document.getElementById('roster-screen'),
-    checkout: document.getElementById('checkout-screen')
+    checkout: document.getElementById('checkout-screen'),
+    success: document.getElementById('success-screen')
 };
 
 function showScreen(screenName) {
@@ -70,7 +71,7 @@ document.getElementById('btnIrSeleccion').addEventListener('click', () => showSc
 document.getElementById('btnVolverLobby').addEventListener('click', () => showScreen('lobby'));
 document.getElementById('btnVolverMonto').addEventListener('click', () => showScreen('seleccion'));
 document.getElementById('btnVolverRoster').addEventListener('click', () => showScreen('roster'));
-
+document.getElementById('btnVolverInicio').addEventListener('click', () => showScreen('lobby'));
 
 // --- LÓGICA DEL SLIDER MATEMÁTICO ---
 const slider = document.getElementById('betSlider');
@@ -91,7 +92,6 @@ slider.addEventListener('input', (e) => {
     
     document.getElementById('rosterSizeDisplay').textContent = state.cuposTotales;
 });
-
 
 // --- INYECCIÓN Y CARGA DE DATOS ---
 document.getElementById('btnSeedDb').addEventListener('click', async () => {
@@ -122,7 +122,6 @@ async function cargarDatosTorneo() {
         document.getElementById('btnSeedDb').style.display = 'none'; 
     }
 }
-
 
 // --- LÓGICA DE SELECCIÓN DE ROSTER ---
 document.getElementById('btnSiguientePago').addEventListener('click', () => {
@@ -175,8 +174,7 @@ function actualizarEstadoBotonRoster() {
     btn.disabled = (faltantes !== 0);
 }
 
-
-// --- LÓGICA DE CHECKOUT ---
+// --- LÓGICA DE CHECKOUT Y PAGO ---
 document.getElementById('btnIrCheckout').addEventListener('click', () => {
     document.getElementById('chk-monto').textContent = "$ " + state.montoSeleccionado.toLocaleString('es-CO') + " COP";
     document.getElementById('chk-multiplicador').textContent = state.multiplicador.toFixed(1) + "x";
@@ -193,6 +191,42 @@ document.getElementById('btnIrCheckout').addEventListener('click', () => {
     showScreen('checkout');
 });
 
-document.getElementById('btnPagarBold').addEventListener('click', () => {
-    alert(`Aquí conectaremos el API de Bold para procesar el cobro por $${state.montoSeleccionado.toLocaleString('es-CO')} COP`);
+// Botón Final: Procesar Pago y Guardar en BD
+document.getElementById('btnPagarBold').addEventListener('click', async () => {
+    const btn = document.getElementById('btnPagarBold');
+    
+    // Cambiar a estado de carga
+    btn.innerHTML = '<span class="spinner"></span> Procesando pago...';
+    btn.disabled = true;
+
+    try {
+        // 1. Simulación de llamado al API de Bold (2 segundos)
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // 2. Transacción Exitosa: Guardar ticket en Firestore
+        const user = auth.currentUser;
+        const docRef = await addDoc(collection(db, "bets"), {
+            user_id: user.uid,
+            user_email: user.email,
+            tournament_id: torneoIdActual,
+            tournament_name: state.torneoActual.name,
+            amount_cop: state.montoSeleccionado,
+            multiplier: state.multiplicador,
+            roster: state.jugadoresSeleccionados,
+            payment_status: "APPROVED",
+            created_at: serverTimestamp()
+        });
+
+        // 3. Mostrar pantalla de éxito con el ID real del documento
+        document.getElementById('success-tx-id').textContent = docRef.id;
+        showScreen('success');
+
+    } catch (error) {
+        console.error("Error procesando ticket:", error);
+        alert("Hubo un problema procesando tu pago. Por favor intenta de nuevo.");
+    } finally {
+        // Restaurar el botón en caso de error o salida
+        btn.innerHTML = 'Pagar con Bold <span>🔒</span>';
+        btn.disabled = false;
+    }
 });
