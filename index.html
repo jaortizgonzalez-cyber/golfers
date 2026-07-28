@@ -59,10 +59,9 @@
             <button class="tab-btn" id="tab-perfil">Perfil</button>
             <button class="tab-btn" id="tab-reglas">Reglas</button>
             <button class="tab-btn" id="tab-catalogo">Premios</button>
-            <!-- Botón Admin inyectado dinámicamente si es administrador -->
         </div>
 
-        <!-- CONTENIDO A: Torneos del Mes (Calendario Mensual) -->
+        <!-- CONTENIDO A: Torneos del Mes (Calendario Anual / Mensual) -->
         <div id="content-torneos" class="tab-content">
             <div class="month-selector-bar">
                 <button id="btnMesAnterior" class="btn-outline btn-small">← Mes Anterior</button>
@@ -70,11 +69,11 @@
                 <button id="btnMesSiguiente" class="btn-outline btn-small">Mes Siguiente →</button>
             </div>
 
-            <button id="btnSyncDb" class="btn-outline btn-seed mt-15">🔄 Sincronizar Calendario y Marcadores</button>
+            <button id="btnSyncCalendar" class="btn-outline btn-seed mt-15">🔄 Sincronizar Calendario Anual (ESPN)</button>
             
             <div class="header-section mt-15">
                 <h2>Agenda del Mes</h2>
-                <p class="subtitle-small">Participa en cada fecha del circuito. Los torneos pasados aparecen cerrados automáticamente.</p>
+                <p class="subtitle-small">Participa en cada fecha del circuito. Los torneos pasados o finalizados se bloquean automáticamente.</p>
             </div>
 
             <div id="calendario-mensual-list" class="tickets-container">
