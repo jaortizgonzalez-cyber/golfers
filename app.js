@@ -282,8 +282,9 @@ slider.addEventListener('input', (e) => {
 });
 
 // --- SINCRONIZACIÓN API ESPNS -> FIRESTORE ---
-document.getElementById('btnSyncDb').addEventListener('click', async () => {
+document.getElementById('btnSyncDb')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnSyncDb');
+    if (!btn) return;
     btn.textContent = "🔄 Sincronizando en vivo...";
     btn.disabled = true;
 
@@ -478,7 +479,7 @@ async function iniciarEdicionTicket(ticketId) {
     }
 }
 
-// --- LEADERBOARD (Error NaN Solucionado) ---
+// --- LEADERBOARD ---
 async function cargarRanking() {
     const container = document.getElementById('ranking-list');
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
@@ -502,7 +503,7 @@ async function cargarRanking() {
                 let s = String(p.score || "E").trim().toUpperCase();
                 let val = 0;
                 
-                // Validación robusta para evitar NaN en datos vacíos o erróneos
+                // Validación para asegurar que nunca sea NaN
                 if (s === "E" || s === "EVEN" || s === "-" || s === "") {
                     val = 0;
                 } else if (s.startsWith("+")) {
@@ -529,11 +530,10 @@ async function cargarRanking() {
 
             bet.roster.forEach(player => {
                 let puntosJugador = Number(playerScoresMap[player.id]);
-                if (isNaN(puntosJugador)) puntosJugador = 0; 
+                if (isNaN(puntosJugador)) puntosJugador = 0;
                 basePoints += puntosJugador;
             });
 
-            // Evitar que el TotalPoints termine siendo NaN en ningún escenario
             let totalPoints = Math.max(10, basePoints * bet.multiplier); 
             if (isNaN(totalPoints)) totalPoints = 10;
 
