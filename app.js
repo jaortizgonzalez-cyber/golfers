@@ -23,7 +23,7 @@ const state = {
     multiplicador: 5.0,
     cuposTotales: 2,
     jugadoresSeleccionados: [],
-    editandoTicketId: null // Si tiene un ID, estamos editando en lugar de crear uno nuevo
+    editandoTicketId: null 
 };
 
 const screens = {
@@ -40,6 +40,26 @@ function showScreen(screenName) {
     screens[screenName].classList.remove('hidden');
 }
 
+// --- SISTEMA DE POPUPS / MODALES WOW ---
+function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
+    const modal = document.getElementById('custom-modal');
+    document.getElementById('modal-title').textContent = titulo;
+    document.getElementById('modal-message').textContent = mensaje;
+    document.getElementById('modal-icon').textContent = icono;
+    
+    modal.classList.remove('hidden');
+    
+    const btn = document.getElementById('modal-btn-action');
+    // Limpiar eventos anteriores clonando el botón
+    const nuevoBtn = btn.cloneNode(true);
+    btn.parentNode.replaceChild(nuevoBtn, btn);
+    
+    nuevoBtn.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        if (callback) callback();
+    });
+}
+
 // --- AUTENTICACIÓN ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -53,18 +73,26 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 document.getElementById('btnRegister').addEventListener('click', async () => {
-    try { await createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); } 
-    catch (e) { document.getElementById('message').textContent = e.message; }
+    try { 
+        await createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); 
+    } catch (e) { 
+        mostrarModal("Atención", e.message, "⚠️");
+    }
 });
+
 document.getElementById('btnLogin').addEventListener('click', async () => {
-    try { await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); } 
-    catch (e) { document.getElementById('message').textContent = "Credenciales incorrectas."; }
+    try { 
+        await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); 
+    } catch (e) { 
+        mostrarModal("Credenciales Incorrectas", "Verifica tu correo y contraseña e intenta nuevamente.", "🔒");
+    }
 });
+
 document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
 
 // --- NAVEGACIÓN Y TABS ---
 document.getElementById('btnIrSeleccion').addEventListener('click', () => {
-    state.editandoTicketId = null; // Modo Creación Normal
+    state.editandoTicketId = null; 
     showScreen('seleccion');
 });
 document.getElementById('btnVolverLobby').addEventListener('click', () => showScreen('lobby'));
@@ -108,10 +136,10 @@ slider.addEventListener('input', (e) => {
     document.getElementById('rosterSizeDisplay').textContent = state.cuposTotales;
 });
 
-// --- SINCRONIZACIÓN API ESPNS -> FIRESTORE (CON FECHA DE INICIO) ---
+// --- SINCRONIZACIÓN API ESPNS -> FIRESTORE ---
 document.getElementById('btnSyncDb').addEventListener('click', async () => {
     const btn = document.getElementById('btnSyncDb');
-    btn.textContent = "🔄 Sincronizando con ESPN...";
+    btn.textContent = "🔄 Sincronizando en vivo...";
     btn.disabled = true;
 
     try {
@@ -123,19 +151,26 @@ document.getElementById('btnSyncDb').addEventListener('click', async () => {
             id: event.id,
             name: event.shortName || event.name,
             course: event.courses ? event.courses[0].name : "PGA Tour Course",
-            startDate: event.date, // Fecha oficial de inicio para validar la regla de 1 hora
+            startDate: event.date, 
             status: "ACTIVE",
             updated_at: serverTimestamp(),
             players: []
         };
 
         const competitors = event.competitions[0].competitors;
-        competitors.slice(0, 50).forEach((comp) => {
+        competitors.forEach((comp) => {
             let photoUrl = comp.athlete.headshot ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
+            
+            let rawScore = comp.score;
+            let displayScore = "E";
+            if (rawScore !== undefined && rawScore !== null) {
+                displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
+            }
+
             torneoData.players.push({
                 id: comp.athlete.id,
                 name: comp.athlete.displayName,
-                score: comp.score || "E",
+                score: displayScore,
                 photo: photoUrl
             });
         });
@@ -143,13 +178,12 @@ document.getElementById('btnSyncDb').addEventListener('click', async () => {
         await setDoc(doc(db, "tournaments", torneoData.id), torneoData);
         state.torneoActual = torneoData;
         actualizarUIەTorneo();
-        alert("¡Sincronización exitosa!");
+        mostrarModal("Sincronización Exitosa", "Los datos oficiales del torneo y los puntajes en vivo se han actualizado correctamente.", "⛳");
 
     } catch (error) {
-        console.error("Error sincronizando:", error);
-        alert("Error al conectar con la API de ESPN.");
+        mostrarModal("Error de Conexión", "No pudimos sincronizar con los servidores oficiales en este momento.", "⚠️");
     } finally {
-        btn.textContent = "🔄 Sincronizar Torneo y Guardar en BD";
+        btn.textContent = "🔄 Actualizar Torneo en Vivo";
         btn.disabled = false;
     }
 });
@@ -168,7 +202,7 @@ async function cargarTorneoDesdeFirestore() {
             actualizarUIەTorneo();
         } else {
             document.getElementById('torneo-nombre').textContent = "Torneo disponible para sincronizar";
-            document.getElementById('torneo-campo').textContent = "Haz clic arriba para guardar en BD.";
+            document.getElementById('torneo-campo').textContent = "Haz clic en actualizar para cargar datos.";
         }
     } catch (e) {
         console.error("Error leyendo Firestore:", e);
@@ -188,7 +222,7 @@ function actualizarUIەTorneo() {
     document.getElementById('btnIrSeleccion').disabled = false;
 }
 
-// --- CARGAR MIS APUESTAS CON VALIDACIÓN DE 1 HORA ---
+// --- CARGAR MIS APUESTAS ---
 async function cargarMisApuestas(userId) {
     const container = document.getElementById('mis-apuestas-list');
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
@@ -198,20 +232,16 @@ async function cargarMisApuestas(userId) {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            container.innerHTML = `<div class="empty-state">No tienes apuestas registradas.</div>`;
+            container.innerHTML = `<div class="empty-state">No tienes tickets registrados en este torneo.</div>`;
             return;
         }
 
-        // Validar si estamos a menos de 1 hora del inicio del torneo
         let sePuedeModificar = true;
         if (state.torneoActual && state.torneoActual.startDate) {
             const horaInicioTorneo = new Date(state.torneoActual.startDate).getTime();
             const ahora = new Date().getTime();
             const diferenciaMinutos = (horaInicioTorneo - ahora) / (1000 * 60);
-            
-            if (diferenciaMinutos < 60) {
-                sePuedeModificar = false; // Menos de 1 hora o ya comenzó
-            }
+            if (diferenciaMinutos < 60) sePuedeModificar = false; 
         }
 
         container.innerHTML = ''; 
@@ -223,12 +253,9 @@ async function cargarMisApuestas(userId) {
             const card = document.createElement('div');
             card.className = 'ticket-card';
             
-            let botonEditarHtml = '';
-            if (sePuedeModificar) {
-                botonEditarHtml = `<button class="btn-outline btn-small btn-editar" data-id="${betId}">Modificar Equipo</button>`;
-            } else {
-                botonEditarHtml = `<span style="font-size:11px; color:#ef4444; font-weight:600;">🔒 Edición bloqueada (< 1h para inicio)</span>`;
-            }
+            let botonEditarHtml = sePuedeModificar 
+                ? `<button class="btn-outline btn-small btn-editar" data-id="${betId}">Modificar Equipo</button>`
+                : `<span style="font-size:11px; color:#ef4444; font-weight:600;">🔒 Edición bloqueada (< 1h para inicio)</span>`;
 
             card.innerHTML = `
                 <div class="ticket-card-header">
@@ -244,21 +271,17 @@ async function cargarMisApuestas(userId) {
             container.appendChild(card);
         });
 
-        // Event listener para los botones de modificar
         document.querySelectorAll('.btn-editar').forEach(btn => {
             btn.addEventListener('click', async (e) => {
-                const ticketId = e.target.dataset.id;
-                await iniciarEdicionTicket(ticketId);
+                await iniciarEdicionTicket(e.target.dataset.id);
             });
         });
 
     } catch (error) { 
-        console.error(error);
-        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar las apuestas.</p>`; 
+        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar los tickets.</p>`; 
     }
 }
 
-// Cargar datos del ticket a editar
 async function iniciarEdicionTicket(ticketId) {
     const docRef = doc(db, "bets", ticketId);
     const docSnap = await getDoc(docRef);
@@ -269,17 +292,14 @@ async function iniciarEdicionTicket(ticketId) {
         state.montoSeleccionado = betData.amount_cop;
         state.multiplicador = betData.multiplier;
         
-        // Calcular cupos basados en el monto guardado
         if (betData.amount_cop >= 20000 && betData.amount_cop < 40000) state.cuposTotales = 2;
         else if (betData.amount_cop >= 40000 && betData.amount_cop < 60000) state.cuposTotales = 3;
         else if (betData.amount_cop >= 60000 && betData.amount_cop < 80000) state.cuposTotales = 4;
         else if (betData.amount_cop >= 80000) state.cuposTotales = 5;
         else state.cuposTotales = 1;
 
-        // Precargar los jugadores que ya tenía seleccionados
         state.jugadoresSeleccionados = [...betData.roster];
 
-        // Cambiar textos y abrir pantalla de roster directamente
         document.getElementById('roster-title').textContent = "Modifica tu equipo";
         renderizarJugadores();
         actualizarEstadoBotonRoster();
@@ -287,29 +307,66 @@ async function iniciarEdicionTicket(ticketId) {
     }
 }
 
-// --- LEADERBOARD ---
+// --- LEADERBOARD CON PUNTAJE REAL DE ESPN ---
 async function cargarRanking() {
     const container = document.getElementById('ranking-list');
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
 
     try {
         if(!state.torneoActual) {
-            container.innerHTML = `<div class="empty-state">Sincroniza el torneo primero.</div>`;
+            container.innerHTML = `<div class="empty-state">Actualiza el torneo primero.</div>`;
             return;
         }
+
+        // Crear mapa rápido de scores reales del torneo actual guardado en BD
+        let playerScoresMap = {};
+        if (state.torneoActual.players) {
+            state.torneoActual.players.forEach(p => {
+                // Convertir score de string (ej. "-5", "+2", "E") a valor numérico para calcular puntos
+                let s = p.score.trim();
+                let val = 0;
+                if (s === "E" || s === "EVEN") val = 0;
+                else if (s.startsWith("+")) val = -parseInt(s.replace("+", "")) * 5; // Penaliza sobre par
+                else if (s.startsWith("-")) val = parseInt(s.replace("-", "")) * 10; // Premia bajo par
+                playerScoresMap[p.id] = val;
+            });
+        }
+
         const q = query(collection(db, "bets"), where("tournament_id", "==", state.torneoActual.id));
         const querySnapshot = await getDocs(q);
 
-        let ranking = [];
+        let usuariosMap = {};
+
         querySnapshot.forEach((doc) => {
             const bet = doc.data();
-            let totalPoints = (Math.floor(Math.random() * 50) + 10) * bet.multiplier; 
-            ranking.push({ user: bet.user_email.split('@')[0], team: bet.roster.map(p => p.name).join(', '), points: totalPoints, multiplier: bet.multiplier });
+            let basePoints = 0;
+
+            // Sumar puntos reales basados en el rendimiento de los jugadores en la API
+            bet.roster.forEach(player => {
+                let puntosJugador = playerScoresMap[player.id] !== undefined ? playerScoresMap[player.id] : 10; // Base por participar
+                basePoints += puntosJugador;
+            });
+
+            // Aplicar el multiplicador de la inversión del usuario
+            let totalPoints = Math.max(10, basePoints * bet.multiplier); 
+            let userId = bet.user_id;
+            let userName = bet.user_email.split('@')[0];
+
+            if (!usuariosMap[userId] || totalPoints > usuariosMap[userId].points) {
+                usuariosMap[userId] = {
+                    user: userName,
+                    team: bet.roster.map(p => p.name).join(', '),
+                    points: totalPoints,
+                    multiplier: bet.multiplier
+                };
+            }
         });
 
+        let ranking = Object.values(usuariosMap);
         ranking.sort((a, b) => b.points - a.points);
+
         if (ranking.length === 0) {
-            container.innerHTML = `<div class="empty-state">No hay apuestas registradas aún.</div>`;
+            container.innerHTML = `<div class="empty-state">No hay tickets registrados aún para este torneo.</div>`;
             return;
         }
 
@@ -332,7 +389,10 @@ async function cargarRanking() {
             `;
             container.appendChild(div);
         });
-    } catch (error) { container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar la clasificación.</p>`; }
+    } catch (error) { 
+        console.error(error);
+        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar la clasificación.</p>`; 
+    }
 }
 
 function cargarCatalogo() {
@@ -353,7 +413,7 @@ function cargarCatalogo() {
                 <div class="reward-name">${item.nombre}</div>
                 <div class="reward-pts">${item.puntos.toLocaleString('es-CO')} pts</div>
             </div>
-            <button class="btn-outline btn-small" onclick="alert('Redención en desarrollo')">Redimir</button>
+            <button class="btn-outline btn-small" onclick="mostrarModal('Catálogo', 'La redención de premios estará disponible al finalizar el torneo oficial.', '🎁')">Redimir</button>
         `;
         container.appendChild(div);
     });
@@ -376,7 +436,6 @@ function renderizarJugadores() {
         const div = document.createElement('div');
         div.className = 'player-item';
         
-        // Verificar si este jugador ya está seleccionado (útil al editar)
         const yaSeleccionado = state.jugadoresSeleccionados.some(p => p.id === player.id);
         if (yaSeleccionado) {
             div.classList.add('selected');
@@ -394,12 +453,17 @@ function renderizarJugadores() {
         
         div.addEventListener('click', () => {
             const index = state.jugadoresSeleccionados.findIndex(p => p.id === player.id);
+            
             if (index > -1) {
-                state.jugadoresSeleccionados.splice(index, 1); div.classList.remove('selected');
+                state.jugadoresSeleccionados.splice(index, 1);
+                div.classList.remove('selected');
             } else {
                 if (state.jugadoresSeleccionados.length < state.cuposTotales) {
-                    state.jugadoresSeleccionados.push(player); div.classList.add('selected');
-                } else alert(`Solo puedes seleccionar ${state.cuposTotales} jugador(es).`);
+                    state.jugadoresSeleccionados.push(player);
+                    div.classList.add('selected');
+                } else {
+                    mostrarModal("Límite de Cupos", `Ya tienes el máximo de ${state.cuposTotales} jugador(es) seleccionados. Desmarca uno si deseas cambiarlo.`, "⚠️");
+                }
             }
             actualizarEstadoBotonRoster();
         });
@@ -417,7 +481,6 @@ document.getElementById('btnIrCheckout').addEventListener('click', () => {
     document.getElementById('chk-monto').textContent = "$ " + state.montoSeleccionado.toLocaleString('es-CO') + " COP";
     document.getElementById('chk-multiplicador').textContent = state.multiplicador.toFixed(1) + "x";
     
-    // Cambiar texto del botón de pago si estamos editando
     const btnPagar = document.getElementById('btnPagarBold');
     if (state.editandoTicketId) {
         btnPagar.innerHTML = 'Guardar Cambios del Equipo <span>💾</span>';
@@ -435,17 +498,17 @@ document.getElementById('btnIrCheckout').addEventListener('click', () => {
     showScreen('checkout');
 });
 
-// PROCESAMIENTO O ACTUALIZACIÓN EN FIRESTORE
+// PROCESAMIENTO O ACTUALIZACIÓN
 document.getElementById('btnPagarBold').addEventListener('click', async () => {
     const btn = document.getElementById('btnPagarBold');
-    btn.innerHTML = '<span class="spinner"></span> Procesando...'; btn.disabled = true;
+    btn.innerHTML = '<span class="spinner"></span> Procesando pago seguro...'; 
+    btn.disabled = true;
 
     try {
         await new Promise(resolve => setTimeout(resolve, 1500));
         const user = auth.currentUser;
         
         if (state.editandoTicketId) {
-            // Actualizar ticket existente
             const ticketRef = doc(db, "bets", state.editandoTicketId);
             await updateDoc(ticketRef, {
                 roster: state.jugadoresSeleccionados,
@@ -453,7 +516,6 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
             });
             document.getElementById('success-tx-id').textContent = state.editandoTicketId + " (Actualizado)";
         } else {
-            // Crear nuevo ticket
             const docRef = await addDoc(collection(db, "bets"), {
                 user_id: user.uid, user_email: user.email, tournament_id: state.torneoActual.id, tournament_name: state.torneoActual.name,
                 amount_cop: state.montoSeleccionado, multiplier: state.multiplicador, roster: state.jugadoresSeleccionados,
@@ -464,8 +526,7 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
 
         showScreen('success');
     } catch (error) { 
-        console.error(error);
-        alert("Error procesando la solicitud."); 
+        mostrarModal("Error", "No pudimos procesar tu solicitud de pago. Intenta de nuevo.", "❌");
     } 
     finally { 
         btn.disabled = false; 
