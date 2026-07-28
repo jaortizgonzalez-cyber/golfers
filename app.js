@@ -1,7 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
+// ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
     apiKey: "AIzaSyD_FU4S9CYZi2zXka0WAck-DL6r3Sl4XSE",
   authDomain: "golfers-bf5ec.firebaseapp.com",
@@ -65,7 +66,7 @@ onAuthStateChanged(auth, async (user) => {
         showScreen('lobby');
         await cargarDatosPerfil(user);
         verificarPermisosAdmin(user.email);
-        await cargarTorneosMensualesSilencioso(); 
+        await cargarTorneosMensuales(); // API 1: Calendario
         cargarPremios(); 
     } else {
         showScreen('login');
@@ -89,6 +90,7 @@ function verificarPermisosAdmin(email) {
     }
 }
 
+// --- AUTENTICACIÓN ---
 document.getElementById('btnRegisterToggle').addEventListener('click', () => {
     esModoRegistro = !esModoRegistro;
     const regFields = document.getElementById('register-fields');
@@ -160,10 +162,11 @@ document.getElementById('btnGuardarPerfil').addEventListener('click', async () =
     }
 });
 
-// NAVEGACIÓN
+// --- NAVEGACIÓN ---
 document.getElementById('btnVolverLobby').addEventListener('click', () => showScreen('lobby'));
 document.getElementById('btnVolverMonto').addEventListener('click', () => showScreen('seleccion'));
 document.getElementById('btnVolverRoster').addEventListener('click', () => showScreen('roster'));
+document.getElementById('btnVolverInicio').addEventListener('click', () => { showScreen('lobby'); switchTab('apuestas'); });
 
 const tabs = ['torneos', 'apuestas', 'ranking', 'perfil', 'reglas', 'catalogo', 'admin'];
 tabs.forEach(tab => {
@@ -184,7 +187,7 @@ function switchTab(activeTab) {
     if (activeTab === 'admin' && auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) cargarPanelAdmin();
 }
 
-// SLIDER
+// --- SLIDER ---
 document.getElementById('betSlider').addEventListener('input', (e) => {
     const amount = parseInt(e.target.value);
     state.montoSeleccionado = amount;
@@ -199,23 +202,25 @@ document.getElementById('betSlider').addEventListener('input', (e) => {
     document.getElementById('rosterSizeDisplay').textContent = state.cuposTotales;
 });
 
-// CALENDARIO REAL DESDE API ESPN DIRECTO
+
+// =====================================================================
+// API 1: CALENDARIO ANUAL (onDays) - Solo lee fechas y nombres oficiales
+// =====================================================================
 const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 document.getElementById('btnMesAnterior').addEventListener('click', () => {
     mesVisualizado.mes--;
     if (mesVisualizado.mes < 0) { mesVisualizado.mes = 11; mesVisualizado.ano--; }
-    cargarTorneosMensualesSilencioso();
+    cargarTorneosMensuales();
 });
 
 document.getElementById('btnMesSiguiente').addEventListener('click', () => {
     mesVisualizado.mes++;
     if (mesVisualizado.mes > 11) { mesVisualizado.mes = 0; mesVisualizado.ano++; }
-    cargarTorneosMensualesSilencioso();
+    cargarTorneosMensuales();
 });
 
-// Extrae el calendario en tiempo real sin botones molestos
-async function cargarTorneosMensualesSilencioso() {
+async function cargarTorneosMensuales() {
     document.getElementById('mes-actual-display').textContent = `${nombresMeses[mesVisualizado.mes]} ${mesVisualizado.ano}`;
     const container = document.getElementById('calendario-mensual-list');
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
@@ -230,13 +235,17 @@ async function cargarTorneosMensualesSilencioso() {
             if (ev.startDate) {
                 const fecha = new Date(ev.startDate);
                 if (fecha.getFullYear() === mesVisualizado.ano && fecha.getMonth() === mesVisualizado.mes) {
-                    torneosDelMes.push({ id: ev.id, name: ev.label, startDate: ev.startDate });
+                    torneosDelMes.push({ 
+                        id: ev.id, 
+                        name: ev.label, // Nombre exacto (Ej: Corales Puntacana Championship)
+                        startDate: ev.startDate 
+                    });
                 }
             }
         });
 
         if (torneosDelMes.length === 0) {
-            container.innerHTML = `<div class="empty-state">El calendario de torneos para ${nombresMeses[mesVisualizado.mes]} está en actualización.</div>`;
+            container.innerHTML = `<div class="empty-state">No hay torneos programados para ${nombresMeses[mesVisualizado.mes]}.</div>`;
             return;
         }
 
@@ -276,33 +285,9 @@ async function cargarTorneosMensualesSilencioso() {
     }
 }
 
-// FUNCIÓN EXCLUSIVA DEL ADMIN (SINCRONIZA EN BACKGROUND FIRESTORE)
-document.getElementById('btnSyncCalendar')?.addEventListener('click', async () => {
-    const btn = document.getElementById('btnSyncCalendar');
-    if (!btn) return;
-    btn.textContent = "🔄 Sincronizando calendario anual...";
-    btn.disabled = true;
-
-    try {
-        const calResponse = await fetch('https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/calendar/ondays?lang=en&region=us');
-        const calData = await calResponse.json();
-        const apiEvents = calData.events || [];
-        
-        for (let ev of apiEvents) {
-            if (!ev.id) continue;
-            let torneoData = { id: ev.id, name: ev.label, course: "PGA Tour", startDate: ev.startDate, status: "ACTIVE", updated_at: serverTimestamp() };
-            await setDoc(doc(db, "tournaments", String(torneoData.id)), torneoData, { merge: true });
-        }
-        await cargarTorneosMensualesSilencioso();
-        mostrarModal("Éxito", "La programación oficial se ha respaldado en la base de datos.", "⛳");
-    } catch (error) {
-        mostrarModal("Error", "No pudimos sincronizar con los servidores oficiales.", "⚠️");
-    } finally {
-        btn.textContent = "🔄 Sincronizar Calendario Anual (ESPN)";
-        btn.disabled = false;
-    }
-});
-
+// =====================================================================
+// API 2: LEADERBOARD - Trae el detalle y jugadores del torneo de la semana
+// =====================================================================
 document.getElementById('btnSiguientePago').addEventListener('click', () => {
     state.jugadoresSeleccionados = []; 
     document.getElementById('roster-title').textContent = `Selección para ${state.torneoSeleccionado.name}`;
@@ -313,12 +298,13 @@ document.getElementById('btnSiguientePago').addEventListener('click', () => {
 
 async function renderizarJugadores() {
     const listContainer = document.getElementById('player-list');
-    listContainer.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span><p style="font-size:12px; color:var(--texto-gris);">Cargando lista oficial...</p></div>'; 
+    listContainer.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span><p style="font-size:12px; color:var(--texto-gris);">Cargando jugadores del torneo...</p></div>'; 
 
     let listaJugadores = [];
     try {
-        const leadResponse = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
+        const leadResponse = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard?league=pga');
         const leadData = await leadResponse.json();
+        
         if (leadData.events && leadData.events[0]?.competitions[0]?.competitors) {
             leadData.events[0].competitions[0].competitors.forEach(comp => {
                 let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : '';
@@ -330,7 +316,9 @@ async function renderizarJugadores() {
                 });
             });
         }
-    } catch (e) {}
+    } catch (e) {
+        console.error("Error cargando el Leaderboard API:", e);
+    }
 
     if (listaJugadores.length === 0) {
         listaJugadores = [
@@ -351,6 +339,7 @@ async function renderizarJugadores() {
         const yaSeleccionado = state.jugadoresSeleccionados.some(p => p.id === player.id);
         if (yaSeleccionado) div.classList.add('selected');
 
+        // Avatar UI en caso de 404
         let avatarUrl = player.photo;
         let avatarRespaldo = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=2b563c&color=fff&rounded=true&bold=true`;
         if (!avatarUrl || avatarUrl.includes('default.png')) avatarUrl = avatarRespaldo;
@@ -405,6 +394,7 @@ document.getElementById('btnIrCheckout').addEventListener('click', () => {
     showScreen('checkout');
 });
 
+// --- LISTADOS, FIREBASE Y FLUJO DE COMPRA ---
 async function cargarMisApuestas(userId) {
     const container = document.getElementById('mis-apuestas-list');
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
