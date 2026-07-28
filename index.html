@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Golfers MVP - Selección Libre y Edición</title>
+    <title>Copa Fairway — Quinielas de Golf</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,19 +12,29 @@
 </head>
 <body>
 
+    <!-- MODAL / POPUP PROFESIONAL WOW -->
+    <div id="custom-modal" class="modal-overlay hidden">
+        <div class="modal-card">
+            <div id="modal-icon" class="modal-icon">✨</div>
+            <h3 id="modal-title" class="serif-title">Aviso Importante</h3>
+            <p id="modal-message" class="modal-msg">Mensaje del sistema...</p>
+            <button id="modal-btn-action" class="btn-primary">Entendido</button>
+        </div>
+    </div>
+
     <!-- 1. LOGIN -->
     <div id="login-screen" class="card text-center">
         <div class="logo-circle">⛳</div>
         <h1>Copa Fairway</h1>
-        <p class="subtitle">Quinielas privadas de golf — grupo cerrado</p>
+        <p class="subtitle">Quinielas privadas de golf — acceso exclusivo</p>
         
-        <input type="email" id="email" placeholder="Tu correo electrónico">
-        <input type="password" id="password" placeholder="Tu contraseña">
+        <input type="email" id="email" placeholder="Correo electrónico">
+        <input type="password" id="password" placeholder="Contraseña">
         
         <button id="btnLogin" class="btn-primary">Entrar al grupo <span>&gt;</span></button>
         <button id="btnRegister" class="btn-outline">Crear cuenta nueva</button>
         
-        <p class="disclaimer">Acceso exclusivo para miembros.</p>
+        <p class="disclaimer">Plataforma privada de torneos de golf y entretenimiento.</p>
         <div id="message"></div>
     </div>
 
@@ -44,19 +54,19 @@
 
         <!-- CONTENIDO A: Torneos -->
         <div id="content-torneos" class="tab-content">
-            <button id="btnSyncDb" class="btn-outline btn-seed mt-15">🔄 Sincronizar Torneo y Guardar en BD</button>
+            <button id="btnSyncDb" class="btn-outline btn-seed mt-15">🔄 Actualizar Torneo en Vivo</button>
             
             <div class="header-section mt-15">
-                <h2 style="display: flex; align-items: center; gap: 8px;">Torneo en Vivo <span class="live-dot"></span></h2>
-                <p class="subtitle-small">Datos oficiales del PGA Tour vía ESPN sincronizados en Firestore.</p>
+                <h2 style="display: flex; align-items: center; gap: 8px;">Torneo en Curso <span class="live-dot"></span></h2>
+                <p class="subtitle-small">Selecciona tu inversión, arma tu equipo y compite por la gloria.</p>
             </div>
 
             <div class="tournament-box">
                 <div class="tournament-header">
-                    <h3 id="torneo-nombre" class="serif-title">Sincronizando...</h3>
+                    <h3 id="torneo-nombre" class="serif-title">Cargando evento...</h3>
                     <span class="badge">ABIERTO</span>
                 </div>
-                <span id="torneo-campo" class="tournament-label">Conectando con servidores...</span>
+                <span id="torneo-campo" class="tournament-label">Conectando con el PGA Tour...</span>
                 <span id="torneo-inicio" style="display:block; font-size:12px; color:var(--verde-fairway); font-weight:600; margin-top:5px;"></span>
                 <button id="btnIrSeleccion" class="btn-outline mt-15" disabled>Elegir equipo e inscribirme</button>
             </div>
@@ -65,14 +75,14 @@
         <!-- CONTENIDO B: Mis Apuestas -->
         <div id="content-apuestas" class="tab-content hidden">
             <h2 class="serif-title mt-15">Tus Tickets</h2>
-            <p class="subtitle-small">Puedes modificar tu equipo hasta 1 hora antes de que inicie el torneo.</p>
+            <p class="subtitle-small">Puedes modificar tu equipo hasta 1 hora antes del inicio oficial.</p>
             <div id="mis-apuestas-list" class="tickets-container"></div>
         </div>
 
         <!-- CONTENIDO C: Clasificación -->
         <div id="content-ranking" class="tab-content hidden">
             <h2 class="serif-title mt-15">Leaderboard</h2>
-            <p class="subtitle-small">Posiciones en vivo del torneo actual.</p>
+            <p class="subtitle-small">Puntajes reales calculados en tiempo real.</p>
             <div id="ranking-list" class="ranking-container"></div>
         </div>
 
@@ -89,7 +99,7 @@
         </div>
     </div>
 
-    <!-- 3. SELECCIÓN DE MONTO Y EQUIPO -->
+    <!-- 3. SELECCIÓN DE MONTO -->
     <div id="seleccion-screen" class="card hidden">
         <button id="btnVolverLobby" class="btn-text btn-back">← Volver a torneos</button>
         <h2 class="serif-title">¿Cuánto quieres jugar?</h2>
@@ -100,28 +110,28 @@
             <input type="range" id="betSlider" min="4000" max="150000" step="1000" value="20000">
             <div class="tier-info">
                 <span>👥 <span id="rosterSizeDisplay">2</span> Jugadores</span>
-                <span>🚀 <span id="multiplierDisplay">5.0x</span> Puntos</span>
+                <span>🚀 <span id="multiplierDisplay">5.0x</span> Multiplicador</span>
             </div>
         </div>
         <button id="btnSiguientePago" class="btn-primary">Continuar a Selección <span>&gt;</span></button>
     </div>
 
-    <!-- 4. SELECCIÓN DE JUGADORES (ROSTER LIBRE) -->
+    <!-- 4. SELECCIÓN DE JUGADORES -->
     <div id="roster-screen" class="card hidden">
         <button id="btnVolverMonto" class="btn-text btn-back">← Volver</button>
         <h2 class="serif-title" id="roster-title">Arma tu equipo</h2>
-        <p class="subtitle-small">Selecciona libremente. Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
+        <p class="subtitle-small">Selección libre. Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
         
         <div id="player-list" class="player-list"></div>
 
         <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi ticket <span>&gt;</span></button>
     </div>
 
-    <!-- 5. CHECKOUT / RESUMEN -->
+    <!-- 5. CHECKOUT -->
     <div id="checkout-screen" class="card hidden">
         <button id="btnVolverRoster" class="btn-text btn-back">← Modificar equipo</button>
         <h2 class="serif-title" id="checkout-title">Ticket de juego</h2>
-        <p class="subtitle-small">Revisa tu selección antes de procesar.</p>
+        <p class="subtitle-small">Revisa tu selección antes de procesar el pago seguro.</p>
         
         <div class="checkout-ticket">
             <div class="ticket-row"><span style="color:var(--texto-gris)">Torneo</span> <strong id="chk-torneo">Cargando...</strong></div>
@@ -137,13 +147,13 @@
     <!-- 6. ÉXITO -->
     <div id="success-screen" class="card text-center hidden">
         <div class="logo-circle" style="background-color: #10b981; margin-bottom: 20px;">✓</div>
-        <h2 class="serif-title">¡Operación Exitosa!</h2>
-        <p class="subtitle-small">Tu equipo ha quedado guardado correctamente en la Copa.</p>
+        <h2 class="serif-title">¡Inscripción Exitosa!</h2>
+        <p class="subtitle-small">Tu equipo ha quedado registrado oficialmente en la Copa.</p>
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-            <span style="display:block; font-size:12px; color:#166534;">ID de Transacción Seguro</span>
-            <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:14px; word-break: break-all;">...</strong>
+            <span style="display:block; font-size:12px; color:#166534;">Código de Confirmación</span>
+            <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:13px; word-break: break-all;">...</strong>
         </div>
-        <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
+        <button id="btnVolverInicio" class="btn-primary">Ver mis tickets</button>
     </div>
 
     <script type="module" src="app.js"></script>
