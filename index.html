@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Golfers MVP - En Vivo</title>
+    <title>Golfers MVP - Selección Libre y Edición</title>
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -44,7 +44,6 @@
 
         <!-- CONTENIDO A: Torneos -->
         <div id="content-torneos" class="tab-content">
-            <!-- Botón para sincronizar y guardar la API en Firestore -->
             <button id="btnSyncDb" class="btn-outline btn-seed mt-15">🔄 Sincronizar Torneo y Guardar en BD</button>
             
             <div class="header-section mt-15">
@@ -58,6 +57,7 @@
                     <span class="badge">ABIERTO</span>
                 </div>
                 <span id="torneo-campo" class="tournament-label">Conectando con servidores...</span>
+                <span id="torneo-inicio" style="display:block; font-size:12px; color:var(--verde-fairway); font-weight:600; margin-top:5px;"></span>
                 <button id="btnIrSeleccion" class="btn-outline mt-15" disabled>Elegir equipo e inscribirme</button>
             </div>
         </div>
@@ -65,7 +65,7 @@
         <!-- CONTENIDO B: Mis Apuestas -->
         <div id="content-apuestas" class="tab-content hidden">
             <h2 class="serif-title mt-15">Tus Tickets</h2>
-            <p class="subtitle-small">Aquí verás los equipos que has armado para los torneos.</p>
+            <p class="subtitle-small">Puedes modificar tu equipo hasta 1 hora antes de que inicie el torneo.</p>
             <div id="mis-apuestas-list" class="tickets-container"></div>
         </div>
 
@@ -106,11 +106,11 @@
         <button id="btnSiguientePago" class="btn-primary">Continuar a Selección <span>&gt;</span></button>
     </div>
 
-    <!-- 4. SELECCIÓN DE JUGADORES (ROSTER) -->
+    <!-- 4. SELECCIÓN DE JUGADORES (ROSTER LIBRE) -->
     <div id="roster-screen" class="card hidden">
-        <button id="btnVolverMonto" class="btn-text btn-back">← Volver al monto</button>
-        <h2 class="serif-title">Arma tu equipo</h2>
-        <p class="subtitle-small">Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
+        <button id="btnVolverMonto" class="btn-text btn-back">← Volver</button>
+        <h2 class="serif-title" id="roster-title">Arma tu equipo</h2>
+        <p class="subtitle-small">Selecciona libremente. Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
         
         <div id="player-list" class="player-list"></div>
 
@@ -120,8 +120,8 @@
     <!-- 5. CHECKOUT / RESUMEN -->
     <div id="checkout-screen" class="card hidden">
         <button id="btnVolverRoster" class="btn-text btn-back">← Modificar equipo</button>
-        <h2 class="serif-title">Ticket de juego</h2>
-        <p class="subtitle-small">Revisa tu selección antes de procesar el pago seguro.</p>
+        <h2 class="serif-title" id="checkout-title">Ticket de juego</h2>
+        <p class="subtitle-small">Revisa tu selección antes de procesar.</p>
         
         <div class="checkout-ticket">
             <div class="ticket-row"><span style="color:var(--texto-gris)">Torneo</span> <strong id="chk-torneo">Cargando...</strong></div>
@@ -137,8 +137,8 @@
     <!-- 6. ÉXITO -->
     <div id="success-screen" class="card text-center hidden">
         <div class="logo-circle" style="background-color: #10b981; margin-bottom: 20px;">✓</div>
-        <h2 class="serif-title">¡Inscripción Confirmada!</h2>
-        <p class="subtitle-small">Tu pago ha sido procesado con éxito y tu equipo ya está en la Copa.</p>
+        <h2 class="serif-title">¡Operación Exitosa!</h2>
+        <p class="subtitle-small">Tu equipo ha quedado guardado correctamente en la Copa.</p>
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
             <span style="display:block; font-size:12px; color:#166534;">ID de Transacción Seguro</span>
             <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:14px; word-break: break-all;">...</strong>
