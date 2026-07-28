@@ -4,12 +4,13 @@ import { getFirestore, doc, setDoc, getDoc } from "https://www.gstatic.com/fireb
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
-    apiKey: "TU_API_KEY",
-    authDomain: "golfers-xxxxx.firebaseapp.com",
-    projectId: "golfers-xxxxx",
-    storageBucket: "golfers-xxxxx.appspot.com",
-    messagingSenderId: "XXXXXXXXXXXX",
-    appId: "1:XXXXXXXXXXXX:web:XXXXXXXXXXXXXXXX"
+    apiKey: "AIzaSyD_FU4S9CYZi2zXka0WAck-DL6r3Sl4XSE",
+  authDomain: "golfers-bf5ec.firebaseapp.com",
+  projectId: "golfers-bf5ec",
+  storageBucket: "golfers-bf5ec.firebasestorage.app",
+  messagingSenderId: "1004442521926",
+  appId: "1:1004442521926:web:6563197e04152d2e6f5547",
+  measurementId: "G-8VGWQ63JZW"
 };
 
 const app = initializeApp(firebaseConfig);
