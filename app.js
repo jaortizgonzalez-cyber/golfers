@@ -4,7 +4,7 @@ import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp,
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
-   apiKey: "AIzaSyD_FU4S9CYZi2zXka0WAck-DL6r3Sl4XSE",
+    apiKey: "AIzaSyD_FU4S9CYZi2zXka0WAck-DL6r3Sl4XSE",
   authDomain: "golfers-bf5ec.firebaseapp.com",
   projectId: "golfers-bf5ec",
   storageBucket: "golfers-bf5ec.firebasestorage.app",
@@ -17,7 +17,6 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
-// Estado Global
 const state = {
     torneoActual: null,
     montoSeleccionado: 20000,
@@ -28,7 +27,6 @@ const state = {
 
 const torneoIdActual = "t_401580342"; 
 
-// Referencias UI
 const screens = {
     login: document.getElementById('login-screen'),
     lobby: document.getElementById('lobby-screen'),
@@ -49,7 +47,8 @@ onAuthStateChanged(auth, async (user) => {
         showScreen('lobby');
         document.getElementById('user-email-display').textContent = user.email.split('@')[0];
         cargarDatosTorneo();
-        cargarMisApuestas(user.uid); // Cargar historial de apuestas
+        cargarMisApuestas(user.uid); 
+        cargarCatalogo(); // Cargar la tienda de premios
     } else {
         showScreen('login');
     }
@@ -73,10 +72,10 @@ document.getElementById('btnVolverRoster').addEventListener('click', () => showS
 document.getElementById('btnVolverInicio').addEventListener('click', () => { 
     showScreen('lobby'); 
     switchTab('apuestas'); 
-    cargarMisApuestas(auth.currentUser.uid); // Refrescar apuestas al volver
+    cargarMisApuestas(auth.currentUser.uid); 
 });
 
-const tabs = ['torneos', 'apuestas', 'ranking'];
+const tabs = ['torneos', 'apuestas', 'ranking', 'catalogo'];
 tabs.forEach(tab => {
     document.getElementById(`tab-${tab}`).addEventListener('click', () => switchTab(tab));
 });
@@ -135,27 +134,20 @@ async function cargarDatosTorneo() {
     }
 }
 
-// --- CARGAR MIS APUESTAS DESDE FIRESTORE ---
 async function cargarMisApuestas(userId) {
     const container = document.getElementById('mis-apuestas-list');
     container.innerHTML = '<p style="text-align:center; color:#6b7280; font-size:14px;">Cargando...</p>';
-    
     try {
-        // Consultar solo las apuestas del usuario actual
         const q = query(collection(db, "bets"), where("user_id", "==", userId));
         const querySnapshot = await getDocs(q);
-        
         if (querySnapshot.empty) {
             container.innerHTML = `<div class="empty-state">No tienes apuestas registradas en este torneo.</div>`;
             return;
         }
-
-        container.innerHTML = ''; // Limpiar
+        container.innerHTML = ''; 
         querySnapshot.forEach((doc) => {
             const bet = doc.data();
             const jugadoresNombres = bet.roster.map(j => j.name).join(', ');
-            
-            // Crear la tarjeta visual del ticket
             const card = document.createElement('div');
             card.className = 'ticket-card';
             card.innerHTML = `
@@ -170,10 +162,35 @@ async function cargarMisApuestas(userId) {
             `;
             container.appendChild(card);
         });
-    } catch (error) {
-        console.error("Error cargando apuestas: ", error);
-        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar las apuestas.</p>`;
-    }
+    } catch (error) { container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar las apuestas.</p>`; }
+}
+
+// --- CARGAR CATÁLOGO DE PREMIOS ---
+function cargarCatalogo() {
+    // Premios simulados en base al excel de negocio
+    const catalogo = [
+        { id: 'r1', nombre: 'Guante de Golf Sintético', puntos: 2000, icono: '🧤' },
+        { id: 'r2', nombre: 'Docena Pelotas (Callaway)', puntos: 5000, icono: '⛳' },
+        { id: 'r3', nombre: 'Wedge Cleveland', puntos: 15000, icono: '🏌️' },
+        { id: 'r4', nombre: 'Driver Callaway', puntos: 50000, icono: '🚀' }
+    ];
+    
+    const container = document.getElementById('catalogo-list');
+    container.innerHTML = '';
+    
+    catalogo.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'reward-card';
+        div.innerHTML = `
+            <div>
+                <div class="reward-icon">${item.icono}</div>
+                <div class="reward-name">${item.nombre}</div>
+                <div class="reward-pts">${item.puntos.toLocaleString('es-CO')} pts</div>
+            </div>
+            <button class="btn-outline btn-small" onclick="alert('Redención en desarrollo')">Redimir</button>
+        `;
+        container.appendChild(div);
+    });
 }
 
 // --- SELECCIÓN DE ROSTER Y CHECKOUT ---
