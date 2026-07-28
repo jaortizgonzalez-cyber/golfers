@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Copa Fairway — Quinielas de Golf</title>
-    
+
     <link rel="icon" href="data:,">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,7 +13,7 @@
 </head>
 <body>
 
-    <!-- MODAL / POPUP PROFESIONAL WOW -->
+    <!-- MODAL / POPUP -->
     <div id="custom-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div id="modal-icon" class="modal-icon">✨</div>
@@ -28,7 +28,7 @@
         <div class="logo-circle">⛳</div>
         <h1 id="auth-title">Copa Fairway</h1>
         <p id="auth-subtitle" class="subtitle">Quinielas privadas de golf — acceso exclusivo</p>
-        
+
         <div id="register-fields" class="hidden">
             <input type="text" id="reg-nombre" placeholder="Nombre">
             <input type="text" id="reg-apellido" placeholder="Apellidos">
@@ -36,42 +36,50 @@
 
         <input type="email" id="email" placeholder="Correo electrónico">
         <input type="password" id="password" placeholder="Contraseña">
-        
+
         <button id="btnLogin" class="btn-primary">Entrar al grupo <span>&gt;</span></button>
         <button id="btnRegisterToggle" class="btn-outline">Crear cuenta nueva</button>
         <button id="btnForgotPassword" class="btn-text" style="font-size: 13px; margin-top: 5px; width: 100%;">¿Olvidaste tu contraseña?</button>
-        
+
         <p class="disclaimer">Plataforma privada de torneos de golf segura.</p>
         <div id="message"></div>
     </div>
 
     <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
     <div id="lobby-screen" class="card hidden">
-        
-        <!-- ENCABEZADO MINIMALISTA E IMPECABLE -->
-        <div class="header-top">
-            <div class="user-greeting-box">
-                <span class="welcome-text">Bienvenido,</span>
-                <span id="user-name-display" class="user-name-text">Jugador</span>
+
+        <!-- ENCABEZADO: logo + menú desktop / hamburguesa móvil + usuario -->
+        <div class="app-header">
+            <div class="brand">
+                <span class="brand-mark">⛳</span>
+                <span class="brand-name">Copa Fairway</span>
             </div>
-            <button id="btnLogout" class="btn-logout-link">Cerrar sesión</button>
+
+            <nav class="nav-tabs" id="main-nav-tabs">
+                <button class="tab-btn active" id="tab-torneos">Torneos</button>
+                <button class="tab-btn" id="tab-apuestas">Mis apuestas</button>
+                <button class="tab-btn" id="tab-ranking">Leaderboard</button>
+                <button class="tab-btn" id="tab-perfil">Perfil</button>
+                <button class="tab-btn" id="tab-reglas">Reglas</button>
+                <button class="tab-btn" id="tab-catalogo">Premios</button>
+                <!-- Botón Admin inyectado dinámicamente si es administrador -->
+            </nav>
+
+            <div class="user-box">
+                <div class="user-greeting-box">
+                    <span class="welcome-text">Bienvenido,</span>
+                    <span id="user-name-display" class="user-name-text">Jugador</span>
+                </div>
+                <button id="btnLogout" class="btn-logout-link">Cerrar sesión</button>
+                <button id="btnHamburger" class="hamburger-btn" aria-label="Abrir menú">
+                    <span></span><span></span><span></span>
+                </button>
+            </div>
         </div>
-        
-        <!-- NAVEGACIÓN SCROLL HORIZONTAL -->
-        <div class="nav-tabs" id="main-nav-tabs">
-            <button class="tab-btn active" id="tab-torneos">Torneos</button>
-            <button class="tab-btn" id="tab-apuestas">Mis apuestas</button>
-            <button class="tab-btn" id="tab-ranking">Leaderboard</button>
-            <button class="tab-btn" id="tab-perfil">Perfil</button>
-            <button class="tab-btn" id="tab-reglas">Reglas</button>
-            <button class="tab-btn" id="tab-catalogo">Premios</button>
-            <!-- Botón Admin inyectado dinámicamente si es administrador -->
-        </div>
+        <div id="mobileMenuOverlay" class="mobile-menu-overlay"></div>
 
         <!-- CONTENIDO A: Torneos -->
         <div id="content-torneos" class="tab-content">
-            <!-- Botón de Sincronizar movido a la pestaña Admin -->
-            
             <div class="header-section mt-15">
                 <h2 style="display: flex; align-items: center; gap: 8px;">Torneo en Curso <span class="live-dot"></span></h2>
                 <p class="subtitle-small">Selecciona tu inversión, arma tu equipo y compite por la gloria.</p>
@@ -106,17 +114,17 @@
         <div id="content-perfil" class="tab-content hidden">
             <h2 class="serif-title mt-15">Mi Perfil</h2>
             <p class="subtitle-small">Actualiza tu información personal registrada en la plataforma.</p>
-            
+
             <div class="profile-form">
                 <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Nombre</label>
                 <input type="text" id="profile-nombre" placeholder="Tu nombre">
-                
+
                 <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Apellidos</label>
                 <input type="text" id="profile-apellido" placeholder="Tus apellidos">
-                
+
                 <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Correo electrónico (No modificable)</label>
-                <input type="email" id="profile-email" disabled style="background: #f3f4f6; cursor: not-allowed;">
-                
+                <input type="email" id="profile-email" disabled style="background: #F1EFE6; cursor: not-allowed;">
+
                 <button id="btnGuardarPerfil" class="btn-primary mt-15">Guardar Cambios <span>💾</span></button>
             </div>
         </div>
@@ -125,7 +133,7 @@
         <div id="content-reglas" class="tab-content hidden">
             <h2 class="serif-title mt-15">Reglas de la Copa</h2>
             <p class="subtitle-small">Todo lo que necesitas saber para competir y ganar en la quiniela.</p>
-            
+
             <div class="rules-container">
                 <div class="rule-card">
                     <div class="rule-icon">💰</div>
@@ -178,9 +186,8 @@
         <div id="content-admin" class="tab-content hidden">
             <h2 class="serif-title mt-15">Panel de Administración</h2>
             <p class="subtitle-small">Control financiero, liquidación y sincronización de bases de datos.</p>
-            
-            <!-- Botón de Sincronización reubicado exclusivamente en el Panel Admin -->
-            <button id="btnSyncDb" class="btn-primary" style="background-color: #374151; margin-bottom: 20px;">🔄 Actualizar Torneo en Vivo</button>
+
+            <button id="btnSyncDb" class="btn-primary" style="background-color: var(--verde-oscuro); margin-bottom: 20px;">🔄 Actualizar Torneo en Vivo</button>
 
             <div class="admin-stats-grid">
                 <div class="admin-stat-card">
@@ -189,21 +196,21 @@
                 </div>
                 <div class="admin-stat-card">
                     <span style="font-size: 11px; color: var(--texto-gris);">Margen Utilidad (20%)</span>
-                    <strong id="admin-utilidad" style="font-size: 18px; color: #10b981;">$0 COP</strong>
+                    <strong id="admin-utilidad" style="font-size: 18px; color: var(--verde-fairway);">$0 COP</strong>
                 </div>
                 <div class="admin-stat-card" style="grid-column: span 2;">
                     <span style="font-size: 11px; color: var(--texto-gris);">Bolsa Neta (Premios + Envíos Amazon)</span>
-                    <strong id="admin-bolsa" style="font-size: 18px; color: #d97706;">$0 COP</strong>
+                    <strong id="admin-bolsa" style="font-size: 18px; color: var(--dorado);">$0 COP</strong>
                 </div>
             </div>
 
             <div style="margin-top: 20px;">
-                <h3 style="font-size: 15px; margin-bottom: 10px;">Gestión de Torneo y Liquidación</h3>
-                <button id="btnLiquidarTorneo" class="btn-outline btn-small" style="background:#fffbeb; border-color:#f59e0b; color:#92400e;">🔒 Cerrar y Liquidar Torneo Actual</button>
+                <h3 style="font-size: 15px; margin-bottom: 10px; font-family:'Playfair Display',serif;">Gestión de Torneo y Liquidación</h3>
+                <button id="btnLiquidarTorneo" class="btn-outline btn-small" style="background:var(--dorado-suave); border-color:var(--dorado); color:#5A4718;">🔒 Cerrar y Liquidar Torneo Actual</button>
             </div>
 
             <div style="margin-top: 20px;">
-                <h3 style="font-size: 15px; margin-bottom: 10px;">Premios por Entregar (Amazon / Envíos)</h3>
+                <h3 style="font-size: 15px; margin-bottom: 10px; font-family:'Playfair Display',serif;">Premios por Entregar (Amazon / Envíos)</h3>
                 <div id="admin-premios-list" class="tickets-container" style="max-height: 220px;"></div>
             </div>
         </div>
@@ -231,7 +238,7 @@
         <button id="btnVolverMonto" class="btn-text btn-back">← Volver</button>
         <h2 class="serif-title" id="roster-title">Arma tu equipo</h2>
         <p class="subtitle-small">Selección alfabética. Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
-        
+
         <div id="player-list" class="player-list"></div>
 
         <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi apuesta <span>&gt;</span></button>
@@ -242,7 +249,7 @@
         <button id="btnVolverRoster" class="btn-text btn-back">← Modificar equipo</button>
         <h2 class="serif-title" id="checkout-title">Resumen de Apuesta</h2>
         <p class="subtitle-small">Revisa tu selección antes de procesar el pago seguro.</p>
-        
+
         <div class="checkout-ticket">
             <div class="ticket-row"><span style="color:var(--texto-gris)">Torneo</span> <strong id="chk-torneo">Cargando...</strong></div>
             <div class="ticket-row"><span style="color:var(--texto-gris)">Inversión</span> <strong id="chk-monto">$0 COP</strong></div>
@@ -251,17 +258,17 @@
             <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px;">Tu Equipo:</div>
             <ul id="chk-equipo" class="equipo-list"></ul>
         </div>
-        <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: #111827;">Pagar con Bold <span>🔒</span></button>
+        <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: var(--verde-oscuro);">Pagar con Bold <span>🔒</span></button>
     </div>
 
     <!-- 6. ÉXITO -->
     <div id="success-screen" class="card text-center hidden">
-        <div class="logo-circle" style="background-color: #10b981; margin-bottom: 20px;">✓</div>
+        <div class="logo-circle" style="background-color: var(--verde-fairway); margin-bottom: 20px;">✓</div>
         <h2 class="serif-title">¡Apuesta Registrada!</h2>
         <p class="subtitle-small">Tu equipo ha quedado registrado oficialmente en la Copa.</p>
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-            <span style="display:block; font-size:12px; color:#166534;">Código de Confirmación</span>
-            <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:13px; word-break: break-all;">...</strong>
+        <div style="background: var(--dorado-suave); border: 1px solid var(--dorado); padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+            <span style="display:block; font-size:12px; color:#5A4718;">Código de Confirmación</span>
+            <strong id="success-tx-id" style="color:#5A4718; font-family:monospace; font-size:13px; word-break: break-all;">...</strong>
         </div>
         <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
     </div>
