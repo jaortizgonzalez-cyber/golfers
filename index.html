@@ -205,6 +205,12 @@
             </div>
 
             <div style="margin-top: 20px;">
+                <h3 style="font-size: 15px; margin-bottom: 10px; font-family:'Playfair Display',serif;">Pagos por Confirmar</h3>
+                <p class="subtitle-small" style="margin-bottom:10px;">Verifica manualmente que recibiste el Nequi/transferencia y confirma aquí.</p>
+                <div id="admin-pagos-pendientes-list" class="tickets-container" style="max-height: 260px;"></div>
+            </div>
+
+            <div style="margin-top: 20px;">
                 <h3 style="font-size: 15px; margin-bottom: 10px; font-family:'Playfair Display',serif;">Gestión de Torneo y Liquidación</h3>
                 <button id="btnLiquidarTorneo" class="btn-outline btn-small" style="background:var(--dorado-suave); border-color:var(--dorado); color:#5A4718;">🔒 Cerrar y Liquidar Torneo Actual</button>
             </div>
@@ -248,7 +254,7 @@
     <div id="checkout-screen" class="card hidden">
         <button id="btnVolverRoster" class="btn-text btn-back">← Modificar equipo</button>
         <h2 class="serif-title" id="checkout-title">Resumen de Apuesta</h2>
-        <p class="subtitle-small">Revisa tu selección antes de procesar el pago seguro.</p>
+        <p class="subtitle-small">Revisa tu selección y confirma tu inscripción.</p>
 
         <div class="checkout-ticket">
             <div class="ticket-row"><span style="color:var(--texto-gris)">Torneo</span> <strong id="chk-torneo">Cargando...</strong></div>
@@ -258,16 +264,24 @@
             <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px;">Tu Equipo:</div>
             <ul id="chk-equipo" class="equipo-list"></ul>
         </div>
-        <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: var(--verde-oscuro);">Pagar con Bold <span>🔒</span></button>
+
+        <div class="pay-instructions mt-15">
+            💬 Pago manual: envía tu inversión por Nequi o transferencia al administrador del grupo. Tu inscripción quedará como <strong>Pendiente</strong> hasta que el administrador confirme que recibió el pago.
+        </div>
+
+        <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:6px;">Número de referencia / comprobante (opcional, pero ayuda a confirmar más rápido)</label>
+        <input type="text" id="chk-referencia" placeholder="Ej: Nequi #123456789">
+
+        <button id="btnPagarBold" class="btn-primary" style="background-color: var(--verde-oscuro);">Confirmar inscripción <span>✔️</span></button>
     </div>
 
     <!-- 6. ÉXITO -->
     <div id="success-screen" class="card text-center hidden">
-        <div class="logo-circle" style="background-color: var(--verde-fairway); margin-bottom: 20px;">✓</div>
-        <h2 class="serif-title">¡Apuesta Registrada!</h2>
-        <p class="subtitle-small">Tu equipo ha quedado registrado oficialmente en la Copa.</p>
+        <div class="logo-circle" style="background-color: var(--dorado); margin-bottom: 20px;">⏳</div>
+        <h2 class="serif-title">¡Equipo Registrado!</h2>
+        <p class="subtitle-small">Tu equipo quedó guardado como <strong>Pendiente</strong>. Envía tu pago al administrador para que confirme tu inscripción.</p>
         <div style="background: var(--dorado-suave); border: 1px solid var(--dorado); padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-            <span style="display:block; font-size:12px; color:#5A4718;">Código de Confirmación</span>
+            <span style="display:block; font-size:12px; color:#5A4718;">Código de referencia</span>
             <strong id="success-tx-id" style="color:#5A4718; font-family:monospace; font-size:13px; word-break: break-all;">...</strong>
         </div>
         <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
