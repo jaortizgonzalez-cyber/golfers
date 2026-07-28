@@ -64,6 +64,28 @@ function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     });
 }
 
+// --- MENÚ HAMBURGUESA (móvil) ---
+const hamburgerBtn = document.getElementById('btnHamburger');
+const navTabsEl = document.getElementById('main-nav-tabs');
+const mobileOverlay = document.getElementById('mobileMenuOverlay');
+
+function openMobileMenu() {
+    navTabsEl.classList.add('open');
+    hamburgerBtn.classList.add('open');
+    mobileOverlay.classList.add('visible');
+}
+function closeMobileMenu() {
+    navTabsEl.classList.remove('open');
+    hamburgerBtn.classList.remove('open');
+    mobileOverlay.classList.remove('visible');
+}
+function toggleMobileMenu() {
+    if (navTabsEl.classList.contains('open')) closeMobileMenu();
+    else openMobileMenu();
+}
+hamburgerBtn?.addEventListener('click', toggleMobileMenu);
+mobileOverlay?.addEventListener('click', closeMobileMenu);
+
 // --- AUTENTICACIÓN Y PERFIL ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
@@ -78,7 +100,6 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function verificarPermisosAdmin(email) {
-    const navTabs = document.getElementById('main-nav-tabs');
     const tabAdminExistente = document.getElementById('tab-admin');
     
     if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
@@ -87,7 +108,7 @@ function verificarPermisosAdmin(email) {
             btnAdmin.className = 'tab-btn';
             btnAdmin.id = 'tab-admin';
             btnAdmin.textContent = 'Admin';
-            btnAdmin.addEventListener('click', () => switchTab('admin'));
+            btnAdmin.addEventListener('click', () => { switchTab('admin'); closeMobileMenu(); });
             navTabContainerAdd(btnAdmin);
         }
     } else {
@@ -243,7 +264,7 @@ document.getElementById('btnVolverInicio').addEventListener('click', () => {
 const tabs = ['torneos', 'apuestas', 'ranking', 'perfil', 'reglas', 'catalogo', 'admin'];
 tabs.forEach(tab => {
     const el = document.getElementById(`tab-${tab}`);
-    if (el) el.addEventListener('click', () => switchTab(tab));
+    if (el) el.addEventListener('click', () => { switchTab(tab); closeMobileMenu(); });
 });
 
 function switchTab(activeTab) {
@@ -281,7 +302,7 @@ slider.addEventListener('input', (e) => {
     document.getElementById('rosterSizeDisplay').textContent = state.cuposTotales;
 });
 
-// --- SINCRONIZACIÓN API ESPNS -> FIRESTORE ---
+// --- SINCRONIZACIÓN API ESPN -> FIRESTORE ---
 document.getElementById('btnSyncDb')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnSyncDb');
     if (!btn) return;
@@ -366,7 +387,6 @@ function actualizarUIەTorneo() {
         const fechaInicio = new Date(state.torneoActual.startDate);
         document.getElementById('torneo-inicio').textContent = "⏱️ Inicia: " + fechaInicio.toLocaleString();
         
-        // Si ya pasó la fecha de inicio o está cerrado, deshabilitar inscripciones
         if (new Date().getTime() >= fechaInicio.getTime() || torneoCerrado) {
             torneoCerrado = true;
         }
@@ -423,7 +443,7 @@ async function cargarMisApuestas(userId) {
             
             let botonEditarHtml = sePuedeModificar 
                 ? `<button class="btn-outline btn-small btn-editar" data-id="${betId}">Modificar Equipo</button>`
-                : `<span style="font-size:11px; color:#ef4444; font-weight:600;">🔒 Edición bloqueada (< 1h o torneo cerrado)</span>`;
+                : `<span style="font-size:11px; color:var(--rojo-alerta); font-weight:600;">🔒 Edición bloqueada (< 1h o torneo cerrado)</span>`;
 
             card.innerHTML = `
                 <div class="ticket-card-header">
@@ -446,7 +466,7 @@ async function cargarMisApuestas(userId) {
         });
 
     } catch (error) { 
-        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar las apuestas.</p>`; 
+        container.innerHTML = `<p style="color:var(--rojo-alerta); font-size:13px;">Error al cargar las apuestas.</p>`; 
     }
 }
 
@@ -503,7 +523,6 @@ async function cargarRanking() {
                 let s = String(p.score || "E").trim().toUpperCase();
                 let val = 0;
                 
-                // Validación para asegurar que nunca sea NaN
                 if (s === "E" || s === "EVEN" || s === "-" || s === "") {
                     val = 0;
                 } else if (s.startsWith("+")) {
@@ -578,7 +597,7 @@ async function cargarRanking() {
             container.appendChild(div);
         });
     } catch (error) { 
-        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar la clasificación.</p>`; 
+        container.innerHTML = `<p style="color:var(--rojo-alerta); font-size:13px;">Error al cargar la clasificación.</p>`; 
     }
 }
 
@@ -595,7 +614,6 @@ async function cargarPanelAdmin() {
             const bet = docSnap.data();
             totalRecaudado += (bet.amount_cop || 0);
             
-            // Simulamos ganadores pendientes de envío (si la apuesta tiene buen puntaje)
             premiosPendientesList.push({
                 id: docSnap.id,
                 email: bet.user_email,
@@ -604,9 +622,8 @@ async function cargarPanelAdmin() {
             });
         });
 
-        // Margen operativo y utilidad neta para garantizar rentabilidad
-        let margenUtilidad = totalRecaudado * 0.20; // 20% utilidad asegurada para la plataforma
-        let bolsaNeta = totalRecaudado * 0.80; // 80% destinado a costos de premios, aranceles e impuestos de envío
+        let margenUtilidad = totalRecaudado * 0.20;
+        let bolsaNeta = totalRecaudado * 0.80;
 
         document.getElementById('admin-recaudo').textContent = "$ " + totalRecaudado.toLocaleString('es-CO') + " COP";
         document.getElementById('admin-utilidad').textContent = "$ " + Math.round(margenUtilidad).toLocaleString('es-CO') + " COP";
@@ -626,7 +643,7 @@ async function cargarPanelAdmin() {
             div.innerHTML = `
                 <div class="ticket-card-header">
                     <span style="font-size:12px;">Ganador: ${item.email}</span>
-                    <span style="color:#d97706; font-size:11px;">${item.estado}</span>
+                    <span style="color:var(--dorado); font-size:11px;">${item.estado}</span>
                 </div>
                 <div class="ticket-card-body">
                     <p style="margin:0 0 8px 0; font-size:12px;">🎁 <strong>Premio:</strong> ${item.premio}</p>
@@ -654,7 +671,7 @@ document.getElementById('btnLiquidarTorneo')?.addEventListener('click', async ()
     }
 });
 
-// --- CARGAR PREMIOS (CATÁLOGO OPTIMIZADO PARA BAJO COSTO DE ENVÍO) ---
+// --- CARGAR PREMIOS ---
 function cargarPremios() {
     const catalogo = [
         { id: 'r1', nombre: 'Guante de Golf Sintético (Bajo peso/Envío económico)', puntos: 2000, icono: '🧤' },
