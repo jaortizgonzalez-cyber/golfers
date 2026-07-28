@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, updateData, updateDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
@@ -121,7 +121,6 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
             }
 
             const cred = await createUserWithEmailAndPassword(auth, email, password);
-            // Guardar perfil inicial en Firestore de forma segura
             await setDoc(doc(db, "users", cred.user.uid), {
                 nombre: nombre,
                 apellido: apellido,
@@ -428,7 +427,6 @@ async function cargarRanking() {
             return;
         }
 
-        // Cargar nombres reales desde la colección "users"
         const usersSnap = await getDocs(collection(db, "users"));
         let usersMap = {};
         usersSnap.forEach(uDoc => {
