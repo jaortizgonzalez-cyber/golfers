@@ -264,6 +264,11 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--dorado); 
 .ticket-card-body strong { color: var(--texto-oscuro); }
 .empty-state { text-align: center; padding: 40px 20px; background: var(--bg-crema); border-radius: 12px; border: 1px dashed var(--borde-suave); color: var(--texto-oscuro); font-size: 13px; }
 
+.pay-instructions { background: var(--dorado-suave); border: 1px solid var(--dorado); border-radius: 10px; padding: 14px; font-size: 12.5px; color: #5A4718; line-height: 1.5; margin-bottom: 14px; }
+.payment-badge { font-size: 10px; font-weight: 700; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.4px; }
+.payment-badge.pendiente { background: var(--dorado-suave); color: #5A4718; }
+.payment-badge.aprobado { background: var(--verde-fairway); color: var(--bg-crema); }
+
 .profile-form { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
 
 .rules-container { display: flex; flex-direction: column; gap: 12px; }
