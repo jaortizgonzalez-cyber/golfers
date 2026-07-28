@@ -27,6 +27,7 @@ h1, h2, .serif-title {
 
 h1 { font-size: 28px; margin-bottom: 5px; }
 h2 { font-size: 24px; margin-top: 0; margin-bottom: 15px; }
+.greeting { margin-bottom: 0; }
 
 .card { 
     background: var(--blanco); 
@@ -42,71 +43,58 @@ h2 { font-size: 24px; margin-top: 0; margin-bottom: 15px; }
 .subtitle { color: var(--texto-gris); font-size: 14px; margin-bottom: 30px; }
 .subtitle-small { color: var(--texto-gris); font-size: 13px; line-height: 1.5; margin-bottom: 20px;}
 .disclaimer { font-size: 11px; color: #9ca3af; margin-top: 20px; line-height: 1.4; }
+.mt-15 { margin-top: 15px; }
+
+/* Navegación y Tabs */
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.nav-tabs { 
+    display: flex; 
+    background: #f3f4f6; 
+    padding: 5px; 
+    border-radius: 10px; 
+    margin-bottom: 20px; 
+}
+.tab-btn {
+    flex: 1;
+    background: transparent;
+    color: var(--texto-gris);
+    border: none;
+    padding: 10px 5px;
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 0;
+    border-radius: 8px;
+    transition: all 0.3s;
+}
+.tab-btn.active {
+    background: var(--blanco);
+    color: var(--verde-fairway);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
 
 input[type="email"], input[type="password"] { 
-    width: 100%; 
-    padding: 14px; 
-    margin-bottom: 15px; 
-    border: 1px solid var(--borde-suave); 
-    border-radius: 8px; 
-    font-size: 15px; 
-    font-family: 'Inter', sans-serif;
-    box-sizing: border-box;
+    width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid var(--borde-suave); border-radius: 8px; font-size: 15px; font-family: 'Inter', sans-serif; box-sizing: border-box;
 }
 input:focus { outline: none; border-color: var(--verde-fairway); }
 
-button {
-    font-family: 'Inter', sans-serif;
-    width: 100%; 
-    padding: 14px; 
-    border-radius: 8px; 
-    font-size: 15px; 
-    font-weight: 600; 
-    cursor: pointer; 
-    transition: all 0.2s ease;
-    margin-bottom: 12px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    gap: 8px;
-}
-
+button { font-family: 'Inter', sans-serif; width: 100%; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; }
 .btn-primary { background-color: var(--verde-fairway); color: var(--blanco); border: none; }
 .btn-primary:hover { background-color: #1e3f2b; }
 .btn-outline { background-color: transparent; color: var(--verde-fairway); border: 1px solid var(--verde-fairway); }
 .btn-outline:hover { background-color: #f0fdf4; }
 .btn-text { background: none; border: none; color: var(--texto-gris); font-weight: 500; padding: 10px; }
 .btn-text:hover { color: var(--texto-oscuro); }
+.btn-text-small { background: none; border: none; color: #dc2626; font-size: 12px; width: auto; padding: 0; margin: 0; }
 .btn-back { width: auto; justify-content: flex-start; padding-left: 0; margin-bottom: 10px; }
 
-.logo-circle {
-    background-color: var(--verde-fairway);
-    color: white;
-    width: 50px;
-    height: 50px;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    margin: 0 auto 20px auto;
-}
+.logo-circle { background-color: var(--verde-fairway); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 20px auto; }
 
 .tournament-box { border-top: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; padding: 20px 0; margin-top: 15px; }
 .tournament-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
 .tournament-header h3 { margin: 0; font-size: 18px; }
 .tournament-label { font-size: 13px; color: var(--texto-gris); }
-.mt-15 { margin-top: 15px; }
 
-.badge {
-    background-color: var(--verde-fairway);
-    color: white;
-    font-size: 10px;
-    font-weight: 600;
-    padding: 4px 10px;
-    border-radius: 20px;
-    letter-spacing: 0.5px;
-}
+.badge { background-color: var(--verde-fairway); color: white; font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.5px; }
 
 .slider-container { background: #faf9f6; padding: 25px 20px; border-radius: 12px; border: 1px solid var(--bg-crema); margin-bottom: 25px; text-align: center; }
 input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--verde-fairway); }
@@ -128,17 +116,16 @@ button:disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed
 .equipo-list { list-style: none; padding: 0; margin: 0; font-size: 14px; font-weight: 600;}
 .equipo-list li { margin-bottom: 8px; display: flex; justify-content: space-between; color: var(--texto-oscuro); }
 
+/* Mis Apuestas (Tickets renderizados) */
+.tickets-container { max-height: 400px; overflow-y: auto; }
+.ticket-card { background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+.ticket-card-header { display: flex; justify-content: space-between; border-bottom: 1px solid #f3f4f6; padding-bottom: 10px; margin-bottom: 10px; font-size: 14px; font-weight: 600; }
+.ticket-card-body { font-size: 13px; color: var(--texto-gris); }
+.ticket-card-body strong { color: var(--texto-oscuro); }
+.empty-state { text-align: center; padding: 40px 20px; background: #faf9f6; border-radius: 12px; border: 1px dashed var(--borde-suave); }
+
 .hidden { display: none !important; }
 #message { margin-top: 15px; font-weight: 500; font-size: 13px; color: #dc2626; }
 
-/* Animación de carga para el botón de pago */
-.spinner {
-    border: 3px solid rgba(255,255,255,0.3);
-    border-radius: 50%;
-    border-top: 3px solid white;
-    width: 16px;
-    height: 16px;
-    animation: spin 1s linear infinite;
-    display: inline-block;
-}
+.spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
