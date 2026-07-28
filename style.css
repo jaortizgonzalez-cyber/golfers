@@ -1,267 +1,163 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Copa Fairway — Quinielas de Golf</title>
-    
-    <link rel="icon" href="data:,">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
+:root {
+    --bg-crema: #f5f4ef;
+    --verde-fairway: #2b563c;
+    --texto-oscuro: #1a1a1a;
+    --texto-gris: #6b7280;
+    --borde-suave: #d1d5db;
+    --blanco: #ffffff;
+}
 
-    <!-- MODAL / POPUP PROFESIONAL WOW -->
-    <div id="custom-modal" class="modal-overlay hidden">
-        <div class="modal-card">
-            <div id="modal-icon" class="modal-icon">✨</div>
-            <h3 id="modal-title" class="serif-title">Aviso Importante</h3>
-            <p id="modal-message" class="modal-msg">Mensaje del sistema...</p>
-            <button id="modal-btn-action" class="btn-primary">Entendido</button>
-        </div>
-    </div>
+body { font-family: 'Inter', sans-serif; background-color: var(--bg-crema); color: var(--texto-oscuro); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
+h1, h2, .serif-title { font-family: 'Playfair Display', serif; color: var(--texto-oscuro); font-weight: 600; }
+h1 { font-size: 28px; margin-bottom: 5px; }
+h2 { font-size: 24px; margin-top: 0; margin-bottom: 15px; }
 
-    <!-- 1. LOGIN / REGISTRO / RECUPERACIÓN -->
-    <div id="login-screen" class="card text-center">
-        <div class="logo-circle">⛳</div>
-        <h1 id="auth-title">Copa Fairway</h1>
-        <p id="auth-subtitle" class="subtitle">Quinielas privadas de golf — acceso exclusivo</p>
-        
-        <div id="register-fields" class="hidden">
-            <input type="text" id="reg-nombre" placeholder="Nombre">
-            <input type="text" id="reg-apellido" placeholder="Apellidos">
-        </div>
+.card { background: var(--blanco); padding: 30px 20px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 420px; text-align: left; }
+.text-center { text-align: center; }
+.subtitle { color: var(--texto-gris); font-size: 14px; margin-bottom: 30px; }
+.subtitle-small { color: var(--texto-gris); font-size: 13px; line-height: 1.5; margin-bottom: 20px;}
+.disclaimer { font-size: 11px; color: #9ca3af; margin-top: 20px; line-height: 1.4; }
+.mt-15 { margin-top: 15px; }
 
-        <input type="email" id="email" placeholder="Correo electrónico">
-        <input type="password" id="password" placeholder="Contraseña">
-        
-        <button id="btnLogin" class="btn-primary">Entrar al grupo <span>&gt;</span></button>
-        <button id="btnRegisterToggle" class="btn-outline">Crear cuenta nueva</button>
-        <button id="btnForgotPassword" class="btn-text" style="font-size: 13px; margin-top: 5px; width: 100%;">¿Olvidaste tu contraseña?</button>
-        
-        <p class="disclaimer">Plataforma privada de torneos de golf segura.</p>
-        <div id="message"></div>
-    </div>
+/* Modal Profesional Animado (Popup Wow) */
+.modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(4px); display: flex; justify-content: center; align-items: center; z-index: 1000; animation: fadeIn 0.2s ease-in-out; }
+.modal-card { background: var(--blanco); padding: 30px; border-radius: 16px; width: 90%; max-width: 360px; text-align: center; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); transform: scale(1); animation: scaleUp 0.2s ease-in-out; }
+.modal-icon { font-size: 36px; margin-bottom: 15px; }
+.modal-msg { color: var(--texto-gris); font-size: 14px; line-height: 1.5; margin-bottom: 25px; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes scaleUp { from { transform: scale(0.95); } to { transform: scale(1); } }
 
-    <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
-    <div id="lobby-screen" class="card hidden">
-        
-        <!-- NUEVO ENCABEZADO PREMIUM VERDE -->
-        <div class="header-top">
-            <div class="user-greeting-box">
-                <span class="welcome-text">Bienvenido,</span>
-                <span id="user-name-display" class="user-name-text">Jugador</span>
-            </div>
-            <button id="btnLogout" class="btn-logout-link">Cerrar sesión</button>
-        </div>
-        
-        <div class="nav-tabs" id="main-nav-tabs">
-            <button class="tab-btn active" id="tab-torneos">Torneos</button>
-            <button class="tab-btn" id="tab-apuestas">Mis apuestas</button>
-            <button class="tab-btn" id="tab-ranking">Leaderboard</button>
-            <button class="tab-btn" id="tab-perfil">Perfil</button>
-            <button class="tab-btn" id="tab-reglas">Reglas</button>
-            <button class="tab-btn" id="tab-catalogo">Premios</button>
-            <!-- Botón Admin inyectado dinámicamente si es administrador -->
-        </div>
+.live-dot { height: 10px; width: 10px; background-color: #ef4444; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
-        <!-- CONTENIDO A: Torneos -->
-        <div id="content-torneos" class="tab-content">
-            <button id="btnSyncDb" class="btn-outline btn-seed mt-15">🔄 Actualizar Torneo en Vivo</button>
-            
-            <div class="header-section mt-15">
-                <h2 style="display: flex; align-items: center; gap: 8px;">Torneo en Curso <span class="live-dot"></span></h2>
-                <p class="subtitle-small">Selecciona tu inversión, arma tu equipo y compite por la gloria.</p>
-            </div>
+/* -----------------------------------------
+   NUEVO ENCABEZADO PREMIUM (ESTILO THE MASTERS)
+   ----------------------------------------- */
+.header-top {
+    background: linear-gradient(135deg, var(--verde-fairway), #1e3f2b);
+    margin: -30px -20px 20px -20px; /* Expande la cabecera a los bordes de la tarjeta */
+    padding: 25px 20px;
+    border-radius: 16px 16px 0 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+}
+.user-greeting-box { display: flex; flex-direction: column; max-width: 70%; }
+.welcome-text { color: #a7f3d0; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 2px; }
+.user-name-text { color: #ffffff; font-size: 18px; font-weight: 700; font-family: 'Playfair Display', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.2; }
+.btn-logout-link { background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2); color: white; padding: 6px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; cursor: pointer; text-decoration: none; transition: background 0.3s; white-space: nowrap; }
+.btn-logout-link:hover { background: rgba(255,255,255,0.25); }
 
-            <div class="tournament-box" id="tournament-card-box">
-                <div class="tournament-header">
-                    <h3 id="torneo-nombre" class="serif-title">Cargando evento...</h3>
-                    <span id="torneo-badge" class="badge">ABIERTO</span>
-                </div>
-                <span id="torneo-campo" class="tournament-label">Conectando con el PGA Tour...</span>
-                <span id="torneo-inicio" style="display:block; font-size:12px; color:var(--verde-fairway); font-weight:600; margin-top:5px;"></span>
-                <button id="btnIrSeleccion" class="btn-outline mt-15" disabled>Elegir equipo e inscribirme</button>
-            </div>
-        </div>
+/* Menú Scroll Horizontal Impecable */
+.nav-tabs { 
+    display: flex; 
+    background: #eef2ef; /* Verde muy suave */
+    padding: 6px; 
+    border-radius: 12px; 
+    margin-bottom: 25px; 
+    gap: 8px; 
+    overflow-x: auto; 
+    white-space: nowrap; 
+    flex-wrap: nowrap; /* Evita que se aplasten */
+    -webkit-overflow-scrolling: touch; 
+}
+.nav-tabs::-webkit-scrollbar { display: none; } /* Oculta la barra de scroll */
+.tab-btn { 
+    flex: 0 0 auto; 
+    background: transparent; 
+    color: var(--verde-fairway); 
+    border: none; 
+    padding: 10px 14px; 
+    font-size: 13px; 
+    font-weight: 600; 
+    border-radius: 8px; 
+    transition: all 0.3s; 
+    cursor: pointer;
+    opacity: 0.7;
+}
+.tab-btn.active { background: var(--verde-fairway); color: white; opacity: 1; box-shadow: 0 4px 10px rgba(43, 86, 60, 0.2); }
 
-        <!-- CONTENIDO B: Mis Apuestas -->
-        <div id="content-apuestas" class="tab-content hidden">
-            <h2 class="serif-title mt-15">Mis Apuestas</h2>
-            <p class="subtitle-small">Puedes modificar tu equipo hasta 1 hora antes del inicio oficial.</p>
-            <div id="mis-apuestas-list" class="tickets-container"></div>
-        </div>
+input[type="text"], input[type="email"], input[type="password"] { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid var(--borde-suave); border-radius: 8px; font-size: 15px; font-family: 'Inter', sans-serif; box-sizing: border-box; }
+input:focus { outline: none; border-color: var(--verde-fairway); }
+button { font-family: 'Inter', sans-serif; width: 100%; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; }
+.btn-primary { background-color: var(--verde-fairway); color: var(--blanco); border: none; }
+.btn-primary:hover { background-color: #1e3f2b; }
+.btn-outline { background-color: transparent; color: var(--verde-fairway); border: 1px solid var(--verde-fairway); }
+.btn-outline:hover { background-color: #f0fdf4; }
+.btn-text { background: none; border: none; color: var(--texto-gris); font-weight: 500; padding: 10px; }
+.btn-text:hover { color: var(--texto-oscuro); }
+.btn-text-small { background: none; border: none; color: #dc2626; font-size: 12px; width: auto; padding: 0; margin: 0; }
+.btn-back { width: auto; justify-content: flex-start; padding-left: 0; margin-bottom: 10px; }
+.btn-seed { background: #fef08a; border: 1px solid #eab308; color: #854d0e; font-size: 12px; }
 
-        <!-- CONTENIDO C: Clasificación -->
-        <div id="content-ranking" class="tab-content hidden">
-            <h2 class="serif-title mt-15">Leaderboard</h2>
-            <p class="subtitle-small">Puntajes reales calculados en tiempo real.</p>
-            <div id="ranking-list" class="ranking-container"></div>
-        </div>
+.logo-circle { background-color: var(--verde-fairway); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 20px auto; }
+.tournament-box { border-top: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; padding: 20px 0; margin-top: 15px; }
+.tournament-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
+.tournament-header h3 { margin: 0; font-size: 18px; }
+.tournament-label { font-size: 13px; color: var(--texto-gris); }
+.badge { background-color: var(--verde-fairway); color: white; font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.5px; }
+.badge-closed { background-color: #9ca3af !important; }
 
-        <!-- CONTENIDO D: Perfil de Usuario -->
-        <div id="content-perfil" class="tab-content hidden">
-            <h2 class="serif-title mt-15">Mi Perfil</h2>
-            <p class="subtitle-small">Actualiza tu información personal registrada en la plataforma.</p>
-            
-            <div class="profile-form">
-                <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Nombre</label>
-                <input type="text" id="profile-nombre" placeholder="Tu nombre">
-                
-                <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Apellidos</label>
-                <input type="text" id="profile-apellido" placeholder="Tus apellidos">
-                
-                <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Correo electrónico (No modificable)</label>
-                <input type="email" id="profile-email" disabled style="background: #f3f4f6; cursor: not-allowed;">
-                
-                <button id="btnGuardarPerfil" class="btn-primary mt-15">Guardar Cambios <span>💾</span></button>
-            </div>
-        </div>
+.slider-container { background: #faf9f6; padding: 25px 20px; border-radius: 12px; border: 1px solid var(--borde-suave); margin-bottom: 25px; text-align: center; }
+input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--verde-fairway); }
+.amount-display { font-size: 28px; font-weight: 700; color: var(--verde-fairway); font-family: 'Playfair Display', serif; }
+.tier-info { display: flex; justify-content: space-between; background: var(--blanco); padding: 12px 15px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--texto-oscuro); border: 1px solid #f3f4f6; }
 
-        <!-- CONTENIDO E: Reglas del Juego -->
-        <div id="content-reglas" class="tab-content hidden">
-            <h2 class="serif-title mt-15">Reglas de la Copa</h2>
-            <p class="subtitle-small">Todo lo que necesitas saber para competir y ganar en la quiniela.</p>
-            
-            <div class="rules-container">
-                <div class="rule-card">
-                    <div class="rule-icon">💰</div>
-                    <div>
-                        <h4>1. Inversión y Multiplicadores</h4>
-                        <p>Tu monto de inscripción define tu factor multiplicador y la cantidad de cupos disponibles en tu equipo.</p>
-                    </div>
-                </div>
+.player-list { max-height: 380px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px; }
+.player-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--borde-suave); border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; background: var(--blanco); }
+.player-item:hover { border-color: var(--verde-fairway); }
+.player-item.selected { border-color: var(--verde-fairway); background-color: #f0fdf4; box-shadow: inset 0 0 0 1.5px var(--verde-fairway); }
+.player-info-container { display: flex; align-items: center; gap: 12px; }
+.player-photo { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 1px solid #e5e7eb; background: #f3f4f6; }
+.player-name { font-weight: 600; font-size: 14px; display: block; }
+.player-score { font-size: 11px; color: var(--texto-gris); display: block; margin-top: 2px;}
 
-                <div class="rule-card">
-                    <div class="rule-icon">🏌️‍♂️</div>
-                    <div>
-                        <h4>2. Selección Libre de Golfistas</h4>
-                        <p>Libertad absoluta para escoger a los profesionales que prefieras directamente desde el listado oficial.</p>
-                    </div>
-                </div>
+button:disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed; border: none; }
 
-                <div class="rule-card">
-                    <div class="rule-icon">⏱️</div>
-                    <div>
-                        <h4>3. Modificación de Equipos</h4>
-                        <p>Puedes cambiar tu roster a través de la pestaña <strong>Mis Apuestas</strong> hasta <strong>1 hora</strong> antes del inicio oficial.</p>
-                    </div>
-                </div>
+.checkout-ticket { background: #faf9f6; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; }
+.ticket-row { display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 12px; }
+.equipo-list { list-style: none; padding: 0; margin: 0; font-size: 14px; font-weight: 600;}
+.equipo-list li { margin-bottom: 8px; display: flex; justify-content: space-between; color: var(--texto-oscuro); }
 
-                <div class="rule-card">
-                    <div class="rule-icon">📈</div>
-                    <div>
-                        <h4>4. Sistema de Puntuación</h4>
-                        <p>Puntajes calculados en tiempo real según el rendimiento en el campo multiplicado por el factor de inversión.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+.tickets-container { max-height: 400px; overflow-y: auto; }
+.ticket-card { background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+.ticket-card-header { display: flex; justify-content: space-between; border-bottom: 1px solid #f3f4f6; padding-bottom: 10px; margin-bottom: 10px; font-size: 14px; font-weight: 600; }
+.ticket-card-body { font-size: 13px; color: var(--texto-gris); margin-bottom: 10px; }
+.ticket-card-body strong { color: var(--texto-oscuro); }
+.empty-state { text-align: center; padding: 40px 20px; background: #faf9f6; border-radius: 12px; border: 1px dashed var(--borde-suave); }
 
-        <!-- CONTENIDO F: Premios -->
-        <div id="content-catalogo" class="tab-content hidden">
-            <div class="stats-box mt-15">
-                <div style="font-size: 12px; text-transform: uppercase; font-weight: 600; opacity: 0.9;">Mis Puntos Acumulados</div>
-                <div style="font-size: 28px; font-weight: bold; margin-top: 5px;" id="user-points">2,450 pts</div>
-                <div class="progress-bar"><div class="progress-fill" style="width: 49%;"></div></div>
-                <div style="font-size: 11px; margin-top: 8px; opacity: 0.8;">Faltan 2,550 pts para tu próxima recompensa</div>
-            </div>
-            <h2 class="serif-title mt-15">Premios Disponibles</h2>
-            <p class="subtitle-small">Premios seleccionados de alta rotación (sin costos excesivos de peso/envío).</p>
-            <div id="catalogo-list" class="catalogo-container"></div>
-        </div>
+.profile-form { display: flex; flex-direction: column; gap: 8px; margin-top: 15px; }
 
-        <!-- CONTENIDO G: Panel de Administración -->
-        <div id="content-admin" class="tab-content hidden">
-            <h2 class="serif-title mt-15">Panel de Administración</h2>
-            <p class="subtitle-small">Control financiero, liquidación y gestión de envíos de premios.</p>
-            
-            <div class="admin-stats-grid">
-                <div class="admin-stat-card">
-                    <span style="font-size: 11px; color: var(--texto-gris);">Total Recaudado</span>
-                    <strong id="admin-recaudo" style="font-size: 18px; color: var(--verde-fairway);">$0 COP</strong>
-                </div>
-                <div class="admin-stat-card">
-                    <span style="font-size: 11px; color: var(--texto-gris);">Margen Utilidad (20%)</span>
-                    <strong id="admin-utilidad" style="font-size: 18px; color: #10b981;">$0 COP</strong>
-                </div>
-                <div class="admin-stat-card" style="grid-column: span 2;">
-                    <span style="font-size: 11px; color: var(--texto-gris);">Bolsa Neta (Premios + Envíos Amazon)</span>
-                    <strong id="admin-bolsa" style="font-size: 18px; color: #d97706;">$0 COP</strong>
-                </div>
-            </div>
+.rules-container { max-height: 400px; overflow-y: auto; padding-right: 5px; display: flex; flex-direction: column; gap: 12px; }
+.rule-card { background: #faf9f6; border: 1px solid #e5e7eb; border-radius: 12px; padding: 15px; display: flex; gap: 15px; align-items: flex-start; }
+.rule-icon { font-size: 24px; background: #f0fdf4; padding: 10px; border-radius: 10px; border: 1px solid #bbf7d0; display: flex; align-items: center; justify-content: center; }
+.rule-card h4 { margin: 0 0 4px 0; font-size: 14px; font-weight: 600; color: var(--texto-oscuro); }
+.rule-card p { margin: 0; font-size: 12px; color: var(--texto-gris); line-height: 1.4; }
 
-            <div style="margin-top: 20px;">
-                <h3 style="font-size: 15px; margin-bottom: 10px;">Gestión de Torneo y Liquidación</h3>
-                <button id="btnLiquidarTorneo" class="btn-outline btn-small" style="background:#fffbeb; border-color:#f59e0b; color:#92400e;">🔒 Cerrar y Liquidar Torneo Actual</button>
-            </div>
+.admin-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+.admin-stat-card { background: #faf9f6; border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; display: flex; flex-direction: column; gap: 4px; }
 
-            <div style="margin-top: 20px;">
-                <h3 style="font-size: 15px; margin-bottom: 10px;">Premios por Entregar (Amazon / Envíos)</h3>
-                <div id="admin-premios-list" class="tickets-container" style="max-height: 220px;"></div>
-            </div>
-        </div>
-    </div>
+.stats-box { background-color: var(--verde-fairway); color: white; padding: 25px 20px; border-radius: 16px; margin-bottom: 20px; text-align: left; }
+.progress-bar { background-color: rgba(255,255,255,0.2); border-radius: 4px; height: 8px; width: 100%; margin-top: 15px; overflow: hidden; }
+.progress-fill { background-color: #4ade80; height: 100%; border-radius: 4px; }
+.catalogo-container { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 10px;}
+.reward-card { background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 12px; padding: 15px; text-align: center; display: flex; flex-direction: column; justify-content: space-between; box-shadow: 0 4px 6px rgba(0,0,0,0.02);}
+.reward-icon { font-size: 32px; margin-bottom: 12px; }
+.reward-name { font-size: 13px; font-weight: 600; margin-bottom: 8px; color: var(--texto-oscuro); line-height: 1.3; }
+.reward-pts { font-size: 13px; color: var(--verde-fairway); font-weight: bold; margin-bottom: 12px; }
+.btn-small { padding: 8px; font-size: 12px; margin-bottom: 0; }
 
-    <!-- 3. SELECCIÓN DE MONTO -->
-    <div id="seleccion-screen" class="card hidden">
-        <button id="btnVolverLobby" class="btn-text btn-back">← Volver a torneos</button>
-        <h2 class="serif-title">¿Cuánto quieres jugar?</h2>
-        <p class="subtitle-small">Define tu monto para desbloquear cupos de jugadores y multiplicadores.</p>
+.ranking-container { margin-top: 15px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
+.ranking-item { display: flex; align-items: center; background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+.rank-position { font-size: 20px; font-weight: bold; color: var(--verde-fairway); width: 35px; text-align: center; margin-right: 15px; }
+.rank-info { flex: 1; overflow: hidden; }
+.rank-name { font-size: 14px; font-weight: 600; color: var(--texto-oscuro); margin-bottom: 4px; }
+.rank-team { font-size: 12px; color: var(--texto-gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.rank-points { font-size: 16px; font-weight: bold; color: var(--texto-oscuro); text-align: right; }
 
-        <div class="slider-container">
-            <div class="amount-display" id="amountDisplay">$ 20,000 COP</div>
-            <input type="range" id="betSlider" min="4000" max="150000" step="1000" value="20000">
-            <div class="tier-info">
-                <span>👥 <span id="rosterSizeDisplay">2</span> Jugadores</span>
-                <span>🚀 <span id="multiplierDisplay">5.0x</span> Multiplicador</span>
-            </div>
-        </div>
-        <button id="btnSiguientePago" class="btn-primary">Continuar a Selección <span>&gt;</span></button>
-    </div>
-
-    <!-- 4. SELECCIÓN DE JUGADORES -->
-    <div id="roster-screen" class="card hidden">
-        <button id="btnVolverMonto" class="btn-text btn-back">← Volver</button>
-        <h2 class="serif-title" id="roster-title">Arma tu equipo</h2>
-        <p class="subtitle-small">Selección alfabética. Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
-        
-        <div id="player-list" class="player-list"></div>
-
-        <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi apuesta <span>&gt;</span></button>
-    </div>
-
-    <!-- 5. CHECKOUT -->
-    <div id="checkout-screen" class="card hidden">
-        <button id="btnVolverRoster" class="btn-text btn-back">← Modificar equipo</button>
-        <h2 class="serif-title" id="checkout-title">Resumen de Apuesta</h2>
-        <p class="subtitle-small">Revisa tu selección antes de procesar el pago seguro.</p>
-        
-        <div class="checkout-ticket">
-            <div class="ticket-row"><span style="color:var(--texto-gris)">Torneo</span> <strong id="chk-torneo">Cargando...</strong></div>
-            <div class="ticket-row"><span style="color:var(--texto-gris)">Inversión</span> <strong id="chk-monto">$0 COP</strong></div>
-            <div class="ticket-row"><span style="color:var(--texto-gris)">Multiplicador</span> <strong id="chk-multiplicador">1.0x</strong></div>
-            <hr style="border: 0; border-top: 1px dashed var(--borde-suave); margin: 15px 0;">
-            <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px;">Tu Equipo:</div>
-            <ul id="chk-equipo" class="equipo-list"></ul>
-        </div>
-        <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: #111827;">Pagar con Bold <span>🔒</span></button>
-    </div>
-
-    <!-- 6. ÉXITO -->
-    <div id="success-screen" class="card text-center hidden">
-        <div class="logo-circle" style="background-color: #10b981; margin-bottom: 20px;">✓</div>
-        <h2 class="serif-title">¡Apuesta Registrada!</h2>
-        <p class="subtitle-small">Tu equipo ha quedado registrado oficialmente en la Copa.</p>
-        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
-            <span style="display:block; font-size:12px; color:#166534;">Código de Confirmación</span>
-            <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:13px; word-break: break-all;">...</strong>
-        </div>
-        <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
-    </div>
-
-    <script type="module" src="app.js"></script>
-</body>
-</html>
+.hidden { display: none !important; }
+#message { margin-top: 15px; font-weight: 500; font-size: 13px; color: #dc2626; }
+.spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid var(--verde-fairway); width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; }
+.btn-primary .spinner { border-top: 3px solid white; }
+@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
