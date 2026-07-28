@@ -20,8 +20,8 @@ const db = getFirestore(app);
 const ADMIN_EMAIL = "jaortizgonzalez@gmail.com"; 
 let esModoRegistro = false;
 
-// Estado del mes seleccionado en el calendario (por defecto Julio 2026)
-let mesVisualizado = { ano: 2026, mes: 6 }; // 6 = Julio (0-indexed en JS)
+// Estado del mes seleccionado en el calendario (Julio 2026 por defecto)
+let mesVisualizado = { ano: 2026, mes: 6 }; 
 
 const state = {
     torneoSeleccionado: null,
@@ -270,7 +270,7 @@ slider.addEventListener('input', (e) => {
     document.getElementById('rosterSizeDisplay').textContent = state.cuposTotales;
 });
 
-// --- GESTIÓN DE CALENDARIO MENSUAL DE TORNEOS ---
+// --- SINCRONIZACIÓN HÍBRIDA: CALENDARIO ANUAL (CORE API) + LEADERBOARD ---
 const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 document.getElementById('btnMesAnterior').addEventListener('click', () => {
@@ -285,54 +285,61 @@ document.getElementById('btnMesSiguiente').addEventListener('click', () => {
     cargarTorneosMensuales();
 });
 
-document.getElementById('btnSyncDb').addEventListener('click', async () => {
-    const btn = document.getElementById('btnSyncDb');
-    btn.textContent = "🔄 Sincronizando en vivo...";
+document.getElementById('btnSyncCalendar').addEventListener('click', async () => {
+    const btn = document.getElementById('btnSyncCalendar');
+    btn.textContent = "🔄 Sincronizando calendario anual...";
     btn.disabled = true;
 
     try {
-        const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
-        const data = await response.json();
+        // 1. Sincronizar calendario completo usando la API core solicitada
+        const calResponse = await fetch('https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/calendar/ondays?lang=en&region=us');
+        const calData = await calResponse.json();
         
-        // Procesamos los eventos que trae la API
-        for (let event of data.events) {
-            let torneoData = {
-                id: event.id,
-                name: event.shortName || event.name,
-                course: event.courses ? event.courses[0].name : "PGA Tour Course",
-                startDate: event.date, 
-                status: "ACTIVE",
-                updated_at: serverTimestamp(),
-                players: []
-            };
+        // 2. Sincronizar también marcadores de la API general de Leaderboard para asegurar jugadores y fotos
+        const leadResponse = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
+        const leadData = await leadResponse.json();
 
-            if (event.competitions && event.competitions[0].competitors) {
-                event.competitions[0].competitors.forEach((comp) => {
-                    let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
-                    let rawScore = comp.score;
-                    let displayScore = "E";
-                    if (rawScore !== undefined && rawScore !== null) {
-                        displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
-                    }
-                    torneoData.players.push({
-                        id: comp.athlete.id,
-                        name: comp.athlete.displayName,
-                        score: displayScore,
-                        photo: photoUrl
+        // Procesar eventos del leaderboard activo
+        if (leadData.events) {
+            for (let event of leadData.events) {
+                let torneoData = {
+                    id: event.id,
+                    name: event.shortName || event.name,
+                    course: event.courses ? event.courses[0].name : "PGA Tour Course",
+                    startDate: event.date, 
+                    status: "ACTIVE",
+                    updated_at: serverTimestamp(),
+                    players: []
+                };
+
+                if (event.competitions && event.competitions[0].competitors) {
+                    event.competitions[0].competitors.forEach((comp) => {
+                        let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
+                        let rawScore = comp.score;
+                        let displayScore = "E";
+                        if (rawScore !== undefined && rawScore !== null) {
+                            displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
+                        }
+                        torneoData.players.push({
+                            id: comp.athlete.id,
+                            name: comp.athlete.displayName,
+                            score: displayScore,
+                            photo: photoUrl
+                        });
                     });
-                });
+                }
+                await setDoc(doc(db, "tournaments", torneoData.id), torneoData);
             }
-
-            await setDoc(doc(db, "tournaments", torneoData.id), torneoData);
         }
 
         await cargarTorneosMensuales();
-        mostrarModal("Sincronización Exitosa", "El calendario de torneos del mes y marcadores se han actualizado correctamente.", "⛳");
+        mostrarModal("Sincronización Exitosa", "El calendario anual de torneos se ha actualizado correctamente.", "⛳");
 
     } catch (error) {
+        console.error("Error sincronizando:", error);
         mostrarModal("Error de Conexión", "No pudimos sincronizar con los servidores oficiales.", "⚠️");
     } finally {
-        btn.textContent = "🔄 Sincronizar Calendario y Marcadores";
+        btn.textContent = "🔄 Sincronizar Calendario Anual (ESPN)";
         btn.disabled = false;
     }
 });
@@ -343,7 +350,6 @@ async function cargarTorneosMensuales() {
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
 
     try {
-        // Consultar torneos almacenados en Firestore
         const querySnapshot = await getDocs(collection(db, "tournaments"));
         let torneosDelMes = [];
 
@@ -357,20 +363,17 @@ async function cargarTorneosMensuales() {
             }
         });
 
-        // Si la API no tiene suficientes torneos para este mes simulado de ejemplo, inyectamos estructura de semanas del mes
         if (torneosDelMes.length === 0) {
             container.innerHTML = `
                 <div class="empty-state">
-                    <p>No hay torneos sincronizados para ${nombresMeses[mesVisualizado.mes]} ${mesVisualizado.ano}.</p>
-                    <p style="font-size:12px; color:var(--texto-gris);">Haz clic en "Sincronizar Calendario" para descargar los eventos oficiales de la temporada.</p>
+                    <p>No hay torneos registrados para ${nombresMeses[mesVisualizado.mes]} ${mesVisualizado.ano}.</p>
+                    <p style="font-size:12px; color:var(--texto-gris);">Haz clic en "Sincronizar Calendario Anual" para descargar las fechas oficiales.</p>
                 </div>
             `;
             return;
         }
 
-        // Ordenar por fecha cronológica
         torneosDelMes.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
-
         container.innerHTML = '';
         const ahora = new Date().getTime();
 
@@ -399,7 +402,6 @@ async function cargarTorneosMensuales() {
             container.appendChild(card);
         });
 
-        // Vincular eventos de selección a cada torneo abierto
         document.querySelectorAll('.btn-inscribir-torneo:not([disabled])').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const torneoId = e.target.dataset.id;
