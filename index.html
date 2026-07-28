@@ -47,9 +47,14 @@
 
     <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
     <div id="lobby-screen" class="card hidden">
+        
+        <!-- ENCABEZADO ELEGANTE Y MINIMALISTA -->
         <div class="header-top">
-            <h2 class="greeting">Hola, <span id="user-name-display">Jugador</span></h2>
-            <button id="btnLogout" class="btn-text-small">Cerrar Sesión</button>
+            <div class="user-greeting-box">
+                <span class="welcome-text">Bienvenido,</span>
+                <span id="user-name-display" class="user-name-text">Jugador</span>
+            </div>
+            <button id="btnLogout" class="btn-logout-link">Cerrar sesión</button>
         </div>
         
         <div class="nav-tabs" id="main-nav-tabs">
@@ -64,7 +69,7 @@
 
         <!-- CONTENIDO A: Torneos -->
         <div id="content-torneos" class="tab-content">
-            <!-- Botón de sincronización retirado de aquí -->
+            <button id="btnSyncDb" class="btn-outline btn-seed mt-15">🔄 Actualizar Torneo en Vivo</button>
             
             <div class="header-section mt-15">
                 <h2 style="display: flex; align-items: center; gap: 8px;">Torneo en Curso <span class="live-dot"></span></h2>
@@ -168,13 +173,10 @@
             <div id="catalogo-list" class="catalogo-container"></div>
         </div>
 
-        <!-- CONTENIDO G: Panel de Administración (NUEVO) -->
+        <!-- CONTENIDO G: Panel de Administración -->
         <div id="content-admin" class="tab-content hidden">
             <h2 class="serif-title mt-15">Panel de Administración</h2>
             <p class="subtitle-small">Control financiero, liquidación y gestión de envíos de premios.</p>
-
-            <!-- Botón de sincronización movido exclusivamente aquí -->
-            <button id="btnSyncDb" class="btn-outline btn-seed mt-15" style="margin-bottom: 20px;">🔄 Actualizar Torneo en Vivo</button>
             
             <div class="admin-stats-grid">
                 <div class="admin-stat-card">
