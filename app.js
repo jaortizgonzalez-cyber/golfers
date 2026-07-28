@@ -20,8 +20,9 @@ const db = getFirestore(app);
 const ADMIN_EMAIL = "jaortizgonzalez@gmail.com"; 
 let esModoRegistro = false;
 
-// Estado del mes seleccionado en el calendario (Julio 2026 por defecto)
-let mesVisualizado = { ano: 2026, mes: 6 }; 
+// Estado del calendario (Por defecto: mes en curso, ajustado dinámicamente)
+const fechaActual = new Date();
+let mesVisualizado = { ano: fechaActual.getFullYear(), mes: fechaActual.getMonth() }; 
 
 const state = {
     torneoSeleccionado: null,
@@ -106,14 +107,14 @@ document.getElementById('btnRegisterToggle').addEventListener('click', () => {
     if (esModoRegistro) {
         regFields.classList.remove('hidden');
         title.textContent = "Nuevo Miembro";
-        sub.textContent = "Registro con membresía preferencial";
+        sub.textContent = "Registro de membresía preferencial";
         btnLogin.textContent = "Crear Cuenta";
         btnRegToggle.textContent = "← Ya tengo cuenta";
         btnForgot.classList.add('hidden');
     } else {
         regFields.classList.add('hidden');
         title.textContent = "Copa Fairway";
-        sub.textContent = "Torneos privados y pooles de golf — membresía preferencial";
+        sub.textContent = "Torneos privados y pools del club";
         btnLogin.textContent = "Acceder a la plataforma";
         btnRegToggle.textContent = "Registrar nuevo miembro";
         btnForgot.classList.remove('hidden');
@@ -270,7 +271,7 @@ slider.addEventListener('input', (e) => {
     document.getElementById('rosterSizeDisplay').textContent = state.cuposTotales;
 });
 
-// --- GESTIÓN DE CALENDARIO MENSUAL Y SEMANAL ---
+// --- SINCRONIZACIÓN DEL CALENDARIO ANUAL OFICIAL (API ONDAYS) ---
 const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
 
 document.getElementById('btnMesAnterior').addEventListener('click', () => {
@@ -287,51 +288,59 @@ document.getElementById('btnMesSiguiente').addEventListener('click', () => {
 
 document.getElementById('btnSyncCalendar').addEventListener('click', async () => {
     const btn = document.getElementById('btnSyncCalendar');
-    btn.textContent = "🔄 Sincronizando calendario y eventos...";
+    btn.textContent = "🔄 Sincronizando calendario anual...";
     btn.disabled = true;
 
     try {
-        // Sincronizar Leaderboard activo para capturar jugadores y fotos reales
+        // 1. Sincronizar Calendario Anual de Torneos de ESPN
+        const calResponse = await fetch('https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/calendar/ondays?lang=en&region=us');
+        const calData = await calResponse.json();
+        
+        // 2. Obtener lista de jugadores actualizada del leaderboard (para respaldar rosters)
         const leadResponse = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
         const leadData = await leadResponse.json();
 
-        if (leadData.events) {
-            for (let event of leadData.events) {
-                let torneoData = {
-                    id: event.id,
-                    name: event.shortName || event.name,
-                    course: event.courses ? event.courses[0].name : "PGA Tour Course",
-                    startDate: event.date, 
-                    status: "ACTIVE",
-                    updated_at: serverTimestamp(),
-                    players: []
-                };
-
-                if (event.competitions && event.competitions[0].competitors) {
-                    event.competitions[0].competitors.forEach((comp) => {
-                        let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
-                        let rawScore = comp.score;
-                        let displayScore = "E";
-                        if (rawScore !== undefined && rawScore !== null) {
-                            displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
-                        }
-                        torneoData.players.push({
-                            id: comp.athlete.id,
-                            name: comp.athlete.displayName,
-                            score: displayScore,
-                            photo: photoUrl
-                        });
-                    });
+        let playersDefault = [];
+        if (leadData.events && leadData.events[0]?.competitions[0]?.competitors) {
+            leadData.events[0].competitions[0].competitors.forEach(comp => {
+                let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : '';
+                let rawScore = comp.score;
+                let displayScore = "E";
+                if (rawScore !== undefined && rawScore !== null) {
+                    displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
                 }
-                await setDoc(doc(db, "tournaments", torneoData.id), torneoData);
-            }
+                playersDefault.push({
+                    id: comp.athlete.id,
+                    name: comp.athlete.displayName,
+                    score: displayScore,
+                    photo: photoUrl
+                });
+            });
+        }
+
+        const eventsList = calData.items || calData.events || (Array.isArray(calData) ? calData : []);
+        
+        for (let ev of eventsList) {
+            if (!ev.id) continue;
+            let torneoData = {
+                id: ev.id,
+                name: ev.label || "Torneo Oficial PGA",
+                course: "PGA Tour", 
+                startDate: ev.startDate,
+                endDate: ev.endDate || ev.startDate,
+                status: "ACTIVE",
+                updated_at: serverTimestamp(),
+                players: playersDefault
+            };
+            await setDoc(doc(db, "tournaments", String(torneoData.id)), torneoData, { merge: true });
         }
 
         await cargarTorneosMensuales();
-        mostrarModal("Sincronización Exitosa", "El calendario y los marcadores se han actualizado correctamente.", "⛳");
+        mostrarModal("Sincronización Exitosa", "La programación oficial de torneos se ha actualizado correctamente.", "⛳");
 
     } catch (error) {
-        mostrarModal("Error de Conexión", "No pudimos sincronizar con los servidores oficiales.", "⚠️");
+        console.error("Error sincronizando:", error);
+        mostrarModal("Error de Conexión", "No pudimos sincronizar con los servidores oficiales de ESPN.", "⚠️");
     } finally {
         btn.textContent = "🔄 Sincronizar Calendario Anual (ESPN)";
         btn.disabled = false;
@@ -357,34 +366,14 @@ async function cargarTorneosMensuales() {
             }
         });
 
-        // Si para el mes seleccionado (ej. Julio 2026) la API no trae los 4 torneos automáticamente, generamos la estructura estándar de 4 semanas del mes para garantizar la experiencia completa
-        if (torneosDelMes.length === 0 && mesVisualizado.ano === 2026 && mesVisualizado.mes === 6) {
-            const torneosEjemploJulio = [
-                { id: 'jul-w1', name: 'Rocket Mortgage Classic', course: 'Detroit Golf Club', startDate: '2026-07-02T12:00:00Z', status: 'CLOSED', players: [] },
-                { id: 'jul-w2', name: 'Genesis Scottish Open', course: 'The Renaissance Club', startDate: '2026-07-09T12:00:00Z', status: 'CLOSED', players: [] },
-                { id: 'jul-w3', name: 'The Open Championship (Major)', course: 'Royal Birkdale', startDate: '2026-07-16T12:00:00Z', status: 'CLOSED', players: [] },
-                { id: 'jul-w4', name: '3M Open', course: 'TPC Twin Cities', startDate: '2026-07-23T12:00:00Z', status: 'ACTIVE', players: [] }
-            ];
-            for (let t of torneosEjemploJulio) {
-                await setDoc(doc(db, "tournaments", t.id), { ...t, updated_at: serverTimestamp() });
-                torneosDelMes.push(t);
-            }
-        } else if (torneosDelMes.length === 0) {
-            // Estructura general de 4 semanas para cualquier otro mes futuro
-            for (let w = 1; w <= 4; w++) {
-                let fechaSemana = new Date(mesVisualizado.ano, mesVisualizado.mes, w * 7 - 3);
-                let tId = `mes-${mesVisualizado.ano}-${mesVisualizado.mes}-w${w}`;
-                let tObj = {
-                    id: tId,
-                    name: `Torneo Oficial PGA - Semana ${w}`,
-                    course: 'PGA Tour Championship Course',
-                    startDate: fechaSemana.toISOString(),
-                    status: fechaSemana.getTime() < new Date().getTime() ? 'CLOSED' : 'ACTIVE',
-                    players: []
-                };
-                await setDoc(doc(db, "tournaments", tId), { ...tObj, updated_at: serverTimestamp() });
-                torneosDelMes.push(tObj);
-            }
+        if (torneosDelMes.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>No hay torneos registrados para ${nombresMeses[mesVisualizado.mes]} ${mesVisualizado.ano}.</p>
+                    <p style="font-size:12px; color:var(--texto-gris);">Haz clic en "Sincronizar Calendario" para descargar las fechas oficiales del circuito.</p>
+                </div>
+            `;
+            return;
         }
 
         torneosDelMes.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
@@ -394,22 +383,22 @@ async function cargarTorneosMensuales() {
         torneosDelMes.forEach((torneo, index) => {
             const fechaInicio = new Date(torneo.startDate);
             const horaInicioMs = fechaInicio.getTime();
-            let esPasado = ahora > horaInicioMs || torneo.status === "CLOSED";
+            
+            // Regla estricta: Bloquea inscripciones si falta menos de 1 hora o si el estado es CLOSED
+            const limiteBloqueoMs = horaInicioMs - (60 * 60 * 1000);
+            let esPasado = ahora > limiteBloqueoMs || torneo.status === "CLOSED";
 
             const card = document.createElement('div');
             card.className = `tournament-box ${esPasado ? 'closed-tournament' : ''}`;
             
             card.innerHTML = `
                 <div class="tournament-header">
-                    <h3>Semana ${index + 1}: ${torneo.name}</h3>
-                    <span class="badge ${esPasado ? 'badge-closed' : ''}">${esPasado ? 'CERRADO / FINALIZADO' : 'ABIERTO'}</span>
+                    <h3>${torneo.name}</h3>
+                    <span class="badge ${esPasado ? 'badge-closed' : ''}">${esPasado ? 'FINALIZADO / CERRADO' : 'ABIERTO'}</span>
                 </div>
-                <span class="tournament-label">📍 ${torneo.course || 'PGA Tour Course'}</span>
-                <span style="display:block; font-size:12px; color:${esPasado ? '#9ca3af' : 'var(--verde-fairway)'}; font-weight:600; margin-bottom:10px;">
-                    ⏱️ Inicio: ${fechaInicio.toLocaleString()}
-                </span>
-                <button class="btn-outline btn-small btn-inscribir-torneo" data-id="${torneo.id}" ${esPasado ? 'disabled' : ''}>
-                    ${esPasado ? 'Torneo Finalizado' : 'Participar en este Torneo'}
+                <span class="tournament-label">📅 Inicia: ${fechaInicio.toLocaleString()}</span>
+                <button class="btn-outline btn-small btn-inscribir-torneo" data-id="${torneo.id}" ${esPasado ? 'disabled' : ''} style="margin-top: 10px;">
+                    ${esPasado ? 'Inscripciones Cerradas' : 'Seleccionar mi equipo'}
                 </button>
             `;
 
@@ -419,7 +408,7 @@ async function cargarTorneosMensuales() {
         document.querySelectorAll('.btn-inscribir-torneo:not([disabled])').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const torneoId = e.target.dataset.id;
-                const torneoEncontrado = torneosDelMes.find(t => t.id === torneoId);
+                const torneoEncontrado = torneosDelMes.find(t => String(t.id) === String(torneoId));
                 if (torneoEncontrado) {
                     state.torneoSeleccionado = torneoEncontrado;
                     showScreen('seleccion');
@@ -433,14 +422,14 @@ async function cargarTorneosMensuales() {
     }
 }
 
-// SELECCIÓN Y APUESTA
+// SELECCIÓN Y CONFIGURACIÓN DEL CUADRO
 document.getElementById('btnSiguientePago').addEventListener('click', () => {
     if (!state.torneoSeleccionado) {
-        mostrarModal("Selección Requerida", "Por favor selecciona un torneo activo del mes.", "⚠️");
+        mostrarModal("Selección Requerida", "Por favor selecciona un torneo activo de la agenda.", "⚠️");
         return;
     }
     state.jugadoresSeleccionados = []; 
-    document.getElementById('roster-title').textContent = `Arma tu cuadro para ${state.torneoSeleccionado.name}`;
+    document.getElementById('roster-title').textContent = `Cuadro para ${state.torneoSeleccionado.name}`;
     renderizarJugadores(); 
     actualizarEstadoBotonRoster(); 
     showScreen('roster');
@@ -450,20 +439,13 @@ function renderizarJugadores() {
     const listContainer = document.getElementById('player-list');
     listContainer.innerHTML = ''; 
     
-    // Si el torneo no tiene jugadores sincronizados de la API, cargamos una plantilla real de golfistas profesionales del PGA Tour para que el usuario pueda armar su cuadro sin bloqueos
     let listaJugadores = state.torneoSeleccionado.players;
     if (!listaJugadores || listaJugadores.length === 0) {
         listaJugadores = [
-            { id: 'p1', name: 'Scottie Scheffler', score: '-12', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/10499.png' },
-            { id: 'p2', name: 'Xander Schauffele', score: '-10', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/9976.png' },
-            { id: 'p3', name: 'Rory McIlroy', score: '-8', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/3498.png' },
-            { id: 'p4', name: 'Jon Rahm', score: '-7', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/10346.png' },
-            { id: 'p5', name: 'Viktor Hovland', score: '-6', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/11135.png' },
-            { id: 'p6', name: 'Collin Morikawa', score: '-5', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/10877.png' },
-            { id: 'p7', name: 'Ludvig Åberg', score: '-5', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/13214.png' },
-            { id: 'p8', name: 'Wyndham Clark', score: '-4', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/10884.png' },
-            { id: 'p9', name: 'Bryson DeChambeau', score: '-4', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/9980.png' },
-            { id: 'p10', name: 'Brooks Koepka', score: '-3', photo: 'https://a.espncdn.com/i/headshots/golf/players/full/6779.png' }
+            { id: 'p1', name: 'Scottie Scheffler', score: '-12', photo: '' },
+            { id: 'p2', name: 'Xander Schauffele', score: '-10', photo: '' },
+            { id: 'p3', name: 'Rory McIlroy', score: '-8', photo: '' },
+            { id: 'p4', name: 'Jon Rahm', score: '-7', photo: '' }
         ];
     }
 
@@ -478,12 +460,19 @@ function renderizarJugadores() {
         const yaSeleccionado = state.jugadoresSeleccionados.some(p => p.id === player.id);
         if (yaSeleccionado) div.classList.add('selected');
 
+        // Lógica de Avatar elegante para resolver errores 404 de ESPN
+        let avatarUrl = player.photo;
+        if (!avatarUrl || avatarUrl.includes('default.png')) {
+            avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=2b563c&color=fff&rounded=true&bold=true`;
+        }
+
         div.innerHTML = `
             <div class="player-info-container">
-                <img src="${player.photo}" alt="${player.name}" class="player-photo" onerror="this.src='https://a.espncdn.com/i/headshots/golf/players/full/default.png'">
+                <img src="${avatarUrl}" alt="${player.name}" class="player-photo" 
+                     onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=2b563c&color=fff&rounded=true&bold=true';">
                 <div>
                     <span class="player-name">${player.name}</span>
-                    <span class="player-score">Score: <strong>${player.score}</strong></span>
+                    <span class="player-score">Score / Index: <strong>${player.score}</strong></span>
                 </div>
             </div>
         `;
@@ -498,7 +487,7 @@ function renderizarJugadores() {
                     state.jugadoresSeleccionados.push(player);
                     div.classList.add('selected');
                 } else {
-                    mostrarModal("Límite de Cupos", `Ya tienes el máximo de ${state.cuposTotales} jugador(es).`, "⚠️");
+                    mostrarModal("Límite de Cupos", `Ya completaste los ${state.cuposTotales} cupos de tu inscripción.`, "⚠️");
                 }
             }
             actualizarEstadoBotonRoster();
@@ -528,7 +517,7 @@ document.getElementById('btnIrCheckout').addEventListener('click', () => {
     showScreen('checkout');
 });
 
-// MIS APUESTAS
+// MIS INSCRIPCIONES (TICKETS)
 async function cargarMisApuestas(userId) {
     const container = document.getElementById('mis-apuestas-list');
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
@@ -538,7 +527,7 @@ async function cargarMisApuestas(userId) {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            container.innerHTML = `<div class="empty-state">No tienes apuestas registradas en este mes.</div>`;
+            container.innerHTML = `<div class="empty-state">No tienes cuadros registrados.</div>`;
             return;
         }
 
@@ -563,7 +552,7 @@ async function cargarMisApuestas(userId) {
             container.appendChild(card);
         });
     } catch (error) { 
-        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar las apuestas.</p>`; 
+        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar las inscripciones.</p>`; 
     }
 }
 
@@ -574,7 +563,7 @@ async function cargarRanking() {
 
     try {
         if(!state.torneoSeleccionado) {
-            container.innerHTML = `<div class="empty-state">Selecciona un torneo para ver su Leaderboard.</div>`;
+            container.innerHTML = `<div class="empty-state">Selecciona un torneo de la agenda para ver su Marcador.</div>`;
             return;
         }
 
@@ -586,18 +575,7 @@ async function cargarRanking() {
         });
 
         let playerScoresMap = {};
-        let sourcePlayers = state.torneoSeleccionado.players && state.torneoSeleccionado.players.length > 0 ? state.torneoSeleccionado.players : [
-            { id: 'p1', name: 'Scottie Scheffler', score: '-12' },
-            { id: 'p2', name: 'Xander Schauffele', score: '-10' },
-            { id: 'p3', name: 'Rory McIlroy', score: '-8' },
-            { id: 'p4', name: 'Jon Rahm', score: '-7' },
-            { id: 'p5', name: 'Viktor Hovland', score: '-6' },
-            { id: 'p6', name: 'Collin Morikawa', score: '-5' },
-            { id: 'p7', name: 'Ludvig Åberg', score: '-5' },
-            { id: 'p8', name: 'Wyndham Clark', score: '-4' },
-            { id: 'p9', name: 'Bryson DeChambeau', score: '-4' },
-            { id: 'p10', name: 'Brooks Koepka', score: '-3' }
-        ];
+        let sourcePlayers = state.torneoSeleccionado.players && state.torneoSeleccionado.players.length > 0 ? state.torneoSeleccionado.players : [];
 
         sourcePlayers.forEach(p => {
             let s = String(p.score || "E").trim();
@@ -637,7 +615,7 @@ async function cargarRanking() {
         ranking.sort((a, b) => b.points - a.points);
 
         if (ranking.length === 0) {
-            container.innerHTML = `<div class="empty-state">No hay apuestas registradas en este torneo.</div>`;
+            container.innerHTML = `<div class="empty-state">No hay inscripciones registradas en este torneo.</div>`;
             return;
         }
 
@@ -661,7 +639,7 @@ async function cargarRanking() {
             container.appendChild(div);
         });
     } catch (error) { 
-        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar la clasificación.</p>`; 
+        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar el Leaderboard.</p>`; 
     }
 }
 
@@ -687,7 +665,7 @@ function cargarPremios() {
             <button class="btn-outline btn-small btn-redimir">Redimir</button>
         `;
         div.querySelector('.btn-redimir').addEventListener('click', () => {
-            mostrarModal("Premios", "Los premios de bajo peso de envío se despachan con la bolsa neta recaudada.", "🎁");
+            mostrarModal("Premios", "Los premios de bajo costo de envío se despachan con la bolsa neta del club.", "🎁");
         });
         container.appendChild(div);
     });
@@ -748,7 +726,7 @@ async function cargarPanelAdmin() {
         premiosList.forEach(item => {
             const div = document.createElement('div');
             div.className = 'ticket-card';
-            div.innerHTML = `<div class="ticket-card-header"><span>Ganador: ${item.email}</span></div><div class="ticket-card-body"><p style="margin:0; font-size:12px;">🎁 ${item.premio}</p></div>`;
+            div.innerHTML = `<div class="ticket-card-header"><span>Membresía: ${item.email}</span></div><div class="ticket-card-body"><p style="margin:0; font-size:12px;">🎁 ${item.premio}</p></div>`;
             container.appendChild(div);
         });
     } catch (e) {
