@@ -28,27 +28,56 @@
         <div id="message"></div>
     </div>
 
-    <!-- 2. LOBBY -->
+    <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
     <div id="lobby-screen" class="card hidden">
-        <h2 class="greeting">Hola, <span id="user-email-display">Jugador</span></h2>
+        <div class="header-top">
+            <h2 class="greeting">Hola, <span id="user-email-display">Jugador</span></h2>
+            <button id="btnLogout" class="btn-text-small">Cerrar Sesión</button>
+        </div>
         
-        <button id="btnSeedDb" class="btn-outline btn-seed">⚙️ Iniciar Base de Datos</button>
-        
-        <div class="header-section">
-            <h2>Torneos de la semana</h2>
-            <p class="subtitle-small">Apuesta de $4.000 a $150.000 COP · A más apuesta, más jugadores puedes escoger.</p>
+        <!-- Menú de Navegación -->
+        <div class="nav-tabs">
+            <button class="tab-btn active" id="tab-torneos">Torneos</button>
+            <button class="tab-btn" id="tab-apuestas">Mis apuestas</button>
+            <button class="tab-btn" id="tab-ranking">Clasificación</button>
         </div>
 
-        <div class="tournament-box">
-            <div class="tournament-header">
-                <h3 id="torneo-nombre" class="serif-title">Cargando...</h3>
-                <span class="badge">ABIERTO</span>
+        <!-- CONTENIDO A: Torneos -->
+        <div id="content-torneos" class="tab-content">
+            <button id="btnSeedDb" class="btn-outline btn-seed mt-15">⚙️ Iniciar Base de Datos</button>
+            
+            <div class="header-section mt-15">
+                <h2>Torneos de la semana</h2>
+                <p class="subtitle-small">Apuesta de $4.000 a $150.000 COP · A más apuesta, más jugadores puedes escoger.</p>
             </div>
-            <span id="torneo-campo" class="tournament-label">Abierto para inscripción</span>
-            <button id="btnIrSeleccion" class="btn-outline mt-15">Elegir equipo e inscribirme</button>
+
+            <div class="tournament-box">
+                <div class="tournament-header">
+                    <h3 id="torneo-nombre" class="serif-title">Cargando...</h3>
+                    <span class="badge">ABIERTO</span>
+                </div>
+                <span id="torneo-campo" class="tournament-label">Abierto para inscripción</span>
+                <button id="btnIrSeleccion" class="btn-outline mt-15">Elegir equipo e inscribirme</button>
+            </div>
         </div>
 
-        <button id="btnLogout" class="btn-text">Cerrar Sesión</button>
+        <!-- CONTENIDO B: Mis Apuestas -->
+        <div id="content-apuestas" class="tab-content hidden">
+            <h2 class="serif-title mt-15">Tus Tickets</h2>
+            <p class="subtitle-small">Aquí verás los equipos que has armado para los torneos.</p>
+            <div id="mis-apuestas-list" class="tickets-container">
+                <p style="color: var(--texto-gris); font-size: 14px; text-align: center;">Cargando tus apuestas...</p>
+            </div>
+        </div>
+
+        <!-- CONTENIDO C: Clasificación -->
+        <div id="content-ranking" class="tab-content hidden">
+            <h2 class="serif-title mt-15">Leaderboard</h2>
+            <div class="empty-state">
+                <div class="logo-circle" style="background-color: #f3f4f6; color: #9ca3af; margin-bottom: 10px;">🏆</div>
+                <p style="color: var(--texto-gris); font-size: 14px;">El torneo aún no ha comenzado o no tienes puntos registrados.</p>
+            </div>
+        </div>
     </div>
 
     <!-- 3. SELECCIÓN DE MONTO Y EQUIPO -->
@@ -77,7 +106,7 @@
         <p class="subtitle-small">Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
         
         <div id="player-list" class="player-list">
-            <!-- Los jugadores se cargarán aquí dinámicamente -->
+            <!-- Los jugadores se cargarán aquí -->
         </div>
 
         <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi ticket <span>&gt;</span></button>
@@ -114,10 +143,9 @@
             <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:14px; word-break: break-all;">...</strong>
         </div>
 
-        <button id="btnVolverInicio" class="btn-primary">Volver a mis torneos</button>
+        <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
     </div>
 
-    <!-- Enlace al archivo JavaScript -->
     <script type="module" src="app.js"></script>
 </body>
 </html>
