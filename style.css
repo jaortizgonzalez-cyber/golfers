@@ -1,58 +1,182 @@
-body { 
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; 
-    padding: 20px; 
-    text-align: center; 
-    background-color: #f3f4f6; 
-    margin: 0; 
+/* Variables de Color basadas en el diseño aportado */
+:root {
+    --bg-crema: #f5f4ef;
+    --verde-fairway: #2b563c;
+    --texto-oscuro: #1a1a1a;
+    --texto-gris: #6b7280;
+    --borde-suave: #d1d5db;
+    --blanco: #ffffff;
 }
+
+body { 
+    font-family: 'Inter', sans-serif; 
+    background-color: var(--bg-crema); 
+    color: var(--texto-oscuro);
+    margin: 0; 
+    padding: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    min-height: 100vh;
+}
+
+/* Tipografía Serif para Títulos */
+h1, h2, .serif-title { 
+    font-family: 'Playfair Display', serif; 
+    color: var(--texto-oscuro);
+    font-weight: 600;
+}
+
+h1 { font-size: 28px; margin-bottom: 5px; }
+h2 { font-size: 24px; margin-top: 0; margin-bottom: 15px; }
+
+/* Contenedor Principal (Tarjeta) */
 .card { 
-    background: white; 
-    padding: 30px; 
-    border-radius: 12px; 
-    box-shadow: 0 4px 6px rgba(0,0,0,0.1); 
-    max-width: 400px; 
-    margin: 20px auto; 
+    background: var(--blanco); 
+    padding: 40px 30px; 
+    border-radius: 16px; 
+    box-shadow: 0 10px 25px rgba(0,0,0,0.05); 
+    width: 100%;
+    max-width: 420px; 
     text-align: left; 
 }
-h1, h2, h3 { color: #1F4E78; margin-top: 0; }
-p { color: #666; margin-bottom: 20px; }
-input[type="email"], input[type="password"] { 
-    width: 90%; 
-    padding: 12px; 
-    margin-bottom: 15px; 
-    border: 1px solid #ccc; 
-    border-radius: 6px; 
-    font-size: 16px; 
-}
-button { 
-    width: 100%; 
-    padding: 12px; 
-    background-color: #1F4E78; 
-    color: white; 
-    border: none; 
-    border-radius: 6px; 
-    font-size: 16px; 
-    font-weight: bold; 
-    cursor: pointer; 
-    margin-bottom: 10px; 
-}
-button:hover { background-color: #153a5b; }
-.btn-secondary { background-color: #e5e7eb; color: #374151; }
-.btn-secondary:hover { background-color: #d1d5db; }
-.btn-danger { background-color: #fee2e2; color: #991b1b; padding: 8px; font-size: 14px; margin-top: 20px;}
-.btn-seed { font-size: 12px; background: #fef08a; }
-.btn-back { width: auto; padding: 5px 15px; margin-bottom: 20px; }
 
-/* Cajas y Contenedores */
-.tournament-box { border: 2px solid #e5e7eb; padding: 15px; border-radius: 8px; margin-top: 15px; }
-.tournament-label { font-size: 14px; color: #666; }
+.text-center { text-align: center; }
+
+/* Subtítulos y textos pequeños */
+.subtitle { color: var(--texto-gris); font-size: 14px; margin-bottom: 30px; }
+.subtitle-small { color: var(--texto-gris); font-size: 13px; line-height: 1.5; margin-bottom: 20px;}
+.disclaimer { font-size: 11px; color: #9ca3af; margin-top: 20px; line-height: 1.4; }
+
+/* Inputs */
+input[type="email"], input[type="password"] { 
+    width: 100%; 
+    padding: 14px; 
+    margin-bottom: 15px; 
+    border: 1px solid var(--borde-suave); 
+    border-radius: 8px; 
+    font-size: 15px; 
+    font-family: 'Inter', sans-serif;
+    box-sizing: border-box;
+}
+input:focus { outline: none; border-color: var(--verde-fairway); }
+
+/* Botones */
+button {
+    font-family: 'Inter', sans-serif;
+    width: 100%; 
+    padding: 14px; 
+    border-radius: 8px; 
+    font-size: 15px; 
+    font-weight: 600; 
+    cursor: pointer; 
+    transition: all 0.2s ease;
+    margin-bottom: 12px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 8px;
+}
+
+.btn-primary { 
+    background-color: var(--verde-fairway); 
+    color: var(--blanco); 
+    border: none; 
+}
+.btn-primary:hover { background-color: #1e3f2b; }
+
+.btn-outline { 
+    background-color: transparent; 
+    color: var(--verde-fairway); 
+    border: 1px solid var(--verde-fairway); 
+}
+.btn-outline:hover { background-color: #f0fdf4; }
+
+.btn-text {
+    background: none;
+    border: none;
+    color: var(--texto-gris);
+    font-weight: 500;
+    padding: 10px;
+}
+.btn-text:hover { color: var(--texto-oscuro); }
+
+.btn-back { width: auto; justify-content: flex-start; padding-left: 0; margin-bottom: 10px; }
+
+/* Ícono Circular Logo */
+.logo-circle {
+    background-color: var(--verde-fairway);
+    color: white;
+    width: 50px;
+    height: 50px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    margin: 0 auto 20px auto;
+}
+
+/* Componente Torneo */
+.tournament-box { 
+    border-top: 1px solid #f3f4f6; 
+    border-bottom: 1px solid #f3f4f6; 
+    padding: 20px 0; 
+    margin-top: 15px; 
+}
+.tournament-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+}
+.tournament-header h3 { margin: 0; font-size: 18px; }
+.tournament-label { font-size: 13px; color: var(--texto-gris); }
 .mt-15 { margin-top: 15px; }
-.slider-container { background: #f8fafc; padding: 20px; border-radius: 8px; border: 1px solid #e2e8f0; margin-bottom: 20px; text-align: center; }
-input[type="range"] { width: 100%; margin: 15px 0; }
-.amount-display { font-size: 28px; font-weight: bold; color: #0f172a; margin: 10px 0;}
-.tier-info { display: flex; justify-content: space-between; background: #e0f2fe; padding: 10px; border-radius: 6px; font-size: 14px; font-weight: bold; color: #0369a1; }
+
+/* Insignia (Badge ABIERTO) */
+.badge {
+    background-color: var(--verde-fairway);
+    color: white;
+    font-size: 10px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    letter-spacing: 0.5px;
+}
+
+/* Slider de Inversión */
+.slider-container { 
+    background: #faf9f6; 
+    padding: 25px 20px; 
+    border-radius: 12px; 
+    border: 1px solid var(--bg-crema); 
+    margin-bottom: 25px; 
+    text-align: center; 
+}
+input[type="range"] { 
+    width: 100%; 
+    margin: 20px 0; 
+    accent-color: var(--verde-fairway);
+}
+.amount-display { 
+    font-size: 28px; 
+    font-weight: 700; 
+    color: var(--verde-fairway); 
+    font-family: 'Playfair Display', serif;
+}
+.tier-info { 
+    display: flex; 
+    justify-content: space-between; 
+    background: var(--blanco); 
+    padding: 12px 15px; 
+    border-radius: 8px; 
+    font-size: 13px; 
+    font-weight: 600; 
+    color: var(--texto-oscuro);
+    border: 1px solid #f3f4f6;
+}
 
 /* Utilidades */
-.hidden { display: none; }
-.text-center { text-align: center; }
-#message { margin-top: 15px; font-weight: bold; font-size: 14px; }
+.hidden { display: none !important; }
+#message { margin-top: 15px; font-weight: 500; font-size: 13px; color: #dc2626; }
