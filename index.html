@@ -73,6 +73,39 @@
         <button id="btnSiguientePago" class="btn-primary">Continuar a Selección <span>&gt;</span></button>
     </div>
 
+    <!-- 4. SELECCIÓN DE JUGADORES (ROSTER) -->
+    <div id="roster-screen" class="card hidden">
+        <button id="btnVolverMonto" class="btn-text btn-back">← Volver al monto</button>
+        <h2 class="serif-title">Arma tu equipo</h2>
+        <p class="subtitle-small">Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
+        
+        <div id="player-list" class="player-list">
+            <!-- Los jugadores se cargarán aquí dinámicamente desde Firestore -->
+        </div>
+
+        <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi ticket <span>&gt;</span></button>
+    </div>
+
+    <!-- 5. CHECKOUT / RESUMEN -->
+    <div id="checkout-screen" class="card hidden">
+        <button id="btnVolverRoster" class="btn-text btn-back">← Modificar equipo</button>
+        <h2 class="serif-title">Ticket de juego</h2>
+        <p class="subtitle-small">Revisa tu selección antes de procesar el pago seguro.</p>
+        
+        <div class="checkout-ticket">
+            <div class="ticket-row"><span style="color:var(--texto-gris)">Torneo</span> <strong id="chk-torneo">Cargando...</strong></div>
+            <div class="ticket-row"><span style="color:var(--texto-gris)">Inversión</span> <strong id="chk-monto">$0 COP</strong></div>
+            <div class="ticket-row"><span style="color:var(--texto-gris)">Multiplicador</span> <strong id="chk-multiplicador">1.0x</strong></div>
+            <hr style="border: 0; border-top: 1px dashed var(--borde-suave); margin: 15px 0;">
+            <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px;">Tu Equipo:</div>
+            <ul id="chk-equipo" class="equipo-list">
+                <!-- El equipo se lista aquí -->
+            </ul>
+        </div>
+
+        <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: #111827;">Pagar con Bold <span>🔒</span></button>
+    </div>
+
     <!-- Enlace al archivo JavaScript -->
     <script type="module" src="app.js"></script>
 </body>
