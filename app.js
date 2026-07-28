@@ -4,13 +4,12 @@ import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp,
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
-    apiKey: "AIzaSyD_FU4S9CYZi2zXka0WAck-DL6r3Sl4XSE",
-  authDomain: "golfers-bf5ec.firebaseapp.com",
-  projectId: "golfers-bf5ec",
-  storageBucket: "golfers-bf5ec.firebasestorage.app",
-  messagingSenderId: "1004442521926",
-  appId: "1:1004442521926:web:6563197e04152d2e6f5547",
-  measurementId: "G-8VGWQ63JZW"
+    apiKey: "TU_API_KEY",
+    authDomain: "golfers-xxxxx.firebaseapp.com",
+    projectId: "golfers-xxxxx",
+    storageBucket: "golfers-xxxxx.appspot.com",
+    messagingSenderId: "XXXXXXXXXXXX",
+    appId: "1:XXXXXXXXXXXX:web:XXXXXXXXXXXXXXXX"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -24,8 +23,6 @@ const state = {
     cuposTotales: 2,
     jugadoresSeleccionados: [] 
 };
-
-const torneoIdActual = "t_401580342"; 
 
 const screens = {
     login: document.getElementById('login-screen'),
@@ -46,9 +43,8 @@ onAuthStateChanged(auth, async (user) => {
     if (user) {
         showScreen('lobby');
         document.getElementById('user-email-display').textContent = user.email.split('@')[0];
-        cargarDatosTorneo();
-        cargarMisApuestas(user.uid); 
-        cargarCatalogo(); // Cargar la tienda de premios
+        await cargarTorneoDesdeFirestore(); // Intentamos cargar primero de la Base de Datos
+        cargarCatalogo(); 
     } else {
         showScreen('login');
     }
@@ -70,9 +66,7 @@ document.getElementById('btnVolverLobby').addEventListener('click', () => showSc
 document.getElementById('btnVolverMonto').addEventListener('click', () => showScreen('seleccion'));
 document.getElementById('btnVolverRoster').addEventListener('click', () => showScreen('roster'));
 document.getElementById('btnVolverInicio').addEventListener('click', () => { 
-    showScreen('lobby'); 
-    switchTab('apuestas'); 
-    cargarMisApuestas(auth.currentUser.uid); 
+    showScreen('lobby'); switchTab('apuestas'); 
 });
 
 const tabs = ['torneos', 'apuestas', 'ranking', 'catalogo'];
@@ -87,6 +81,9 @@ function switchTab(activeTab) {
     });
     document.getElementById(`tab-${activeTab}`).classList.add('active');
     document.getElementById(`content-${activeTab}`).classList.remove('hidden');
+
+    if (activeTab === 'apuestas' && auth.currentUser) cargarMisApuestas(auth.currentUser.uid);
+    if (activeTab === 'ranking') cargarRanking();
 }
 
 // --- LÓGICA DEL SLIDER ---
@@ -106,42 +103,98 @@ slider.addEventListener('input', (e) => {
     document.getElementById('rosterSizeDisplay').textContent = state.cuposTotales;
 });
 
-// --- INYECCIÓN Y CARGA DE TORNEO ---
-document.getElementById('btnSeedDb').addEventListener('click', async () => {
+// --- SINCRONIZACIÓN API ESPNS -> FIRESTORE ---
+document.getElementById('btnSyncDb').addEventListener('click', async () => {
+    const btn = document.getElementById('btnSyncDb');
+    btn.textContent = "🔄 Sincronizando con ESPN y guardando en Firestore...";
+    btn.disabled = true;
+
     try {
-        await setDoc(doc(db, "tournaments", torneoIdActual), {
-            name: "The Masters", course: "Augusta National", status: "ACTIVE",
-            players: [
-                { id: "p1", name: "Scottie Scheffler", tier: "A" },
-                { id: "p2", name: "Rory McIlroy", tier: "A" },
-                { id: "p3", name: "Max Homa", tier: "B" },
-                { id: "p4", name: "Joaquin Niemann", tier: "C" },
-                { id: "p5", name: "Tiger Woods", tier: "C" }
-            ]
+        const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
+        const data = await response.json();
+        const event = data.events[0];
+        
+        const torneoData = {
+            id: event.id,
+            name: event.shortName || event.name,
+            course: event.courses ? event.courses[0].name : "PGA Tour Course",
+            status: "ACTIVE",
+            updated_at: serverTimestamp(),
+            players: []
+        };
+
+        const competitors = event.competitions[0].competitors;
+        competitors.slice(0, 40).forEach((comp, index) => {
+            let tier = index < 10 ? "A" : (index < 20 ? "B" : "C");
+            let photoUrl = comp.athlete.headshot ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
+            
+            torneoData.players.push({
+                id: comp.athlete.id,
+                name: comp.athlete.displayName,
+                score: comp.score || "E",
+                tier: tier,
+                photo: photoUrl
+            });
         });
-        alert("¡Base de datos inicializada!");
-        cargarDatosTorneo(); 
-    } catch (error) { console.error("Error creando DB", error); }
+
+        // Guardar de forma permanente en Firestore usando el ID del torneo de ESPN como identificador del documento
+        await setDoc(doc(db, "tournaments", torneoData.id), torneoData);
+        
+        state.torneoActual = torneoData;
+        actualizarUIەTorneo();
+        alert("¡Sincronización exitosa! El torneo y los jugadores se han guardado en la base de datos.");
+
+    } catch (error) {
+        console.error("Error sincronizando:", error);
+        alert("Hubo un error al conectar con la API de ESPN.");
+    } finally {
+        btn.textContent = "🔄 Sincronizar Torneo y Guardar en BD";
+        btn.disabled = false;
+    }
 });
 
-async function cargarDatosTorneo() {
-    const docSnap = await getDoc(doc(db, "tournaments", torneoIdActual));
-    if (docSnap.exists()) {
-        state.torneoActual = docSnap.data(); 
-        document.getElementById('torneo-nombre').textContent = state.torneoActual.name;
-        document.getElementById('chk-torneo').textContent = state.torneoActual.name;
-        document.getElementById('btnSeedDb').style.display = 'none'; 
+// Cargar el torneo guardado desde Firestore por defecto al iniciar sesión
+async function cargarTorneoDesdeFirestore() {
+    try {
+        // Consultamos un ID genérico actual o buscamos el documento activo en la colección
+        // Para simplificar el MVP, usamos el endpoint de ESPN para obtener el ID actual y buscarlo en Firestore
+        const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
+        const data = await response.json();
+        const eventId = data.events[0].id;
+
+        const docRef = doc(db, "tournaments", eventId);
+        const docSnap = await getDoc(docRef);
+
+        if (docSnap.exists()) {
+            state.torneoActual = docSnap.data();
+            actualizarUIەTorneo();
+        } else {
+            // Si no está guardado todavía, sugerimos sincronizar
+            document.getElementById('torneo-nombre').textContent = "Torneo disponible para sincronizar";
+            document.getElementById('torneo-campo').textContent = "Haz clic arriba para guardar en BD.";
+        }
+    } catch (e) {
+        console.error("Error leyendo Firestore:", e);
     }
 }
 
+function actualizarUIەTorneo() {
+    if (!state.torneoActual) return;
+    document.getElementById('torneo-nombre').textContent = state.torneoActual.name;
+    document.getElementById('torneo-campo').textContent = state.torneoActual.course;
+    document.getElementById('chk-torneo').textContent = state.torneoActual.name;
+    document.getElementById('btnIrSeleccion').disabled = false;
+}
+
+// --- CARGAR MIS APUESTAS ---
 async function cargarMisApuestas(userId) {
     const container = document.getElementById('mis-apuestas-list');
-    container.innerHTML = '<p style="text-align:center; color:#6b7280; font-size:14px;">Cargando...</p>';
+    container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
     try {
         const q = query(collection(db, "bets"), where("user_id", "==", userId));
         const querySnapshot = await getDocs(q);
         if (querySnapshot.empty) {
-            container.innerHTML = `<div class="empty-state">No tienes apuestas registradas en este torneo.</div>`;
+            container.innerHTML = `<div class="empty-state">No tienes apuestas registradas.</div>`;
             return;
         }
         container.innerHTML = ''; 
@@ -165,19 +218,63 @@ async function cargarMisApuestas(userId) {
     } catch (error) { container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar las apuestas.</p>`; }
 }
 
-// --- CARGAR CATÁLOGO DE PREMIOS ---
+// --- LEADERBOARD ---
+async function cargarRanking() {
+    const container = document.getElementById('ranking-list');
+    container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
+
+    try {
+        if(!state.torneoActual) {
+            container.innerHTML = `<div class="empty-state">Sincroniza el torneo primero.</div>`;
+            return;
+        }
+        const q = query(collection(db, "bets"), where("tournament_id", "==", state.torneoActual.id));
+        const querySnapshot = await getDocs(q);
+
+        let ranking = [];
+        querySnapshot.forEach((doc) => {
+            const bet = doc.data();
+            let totalPoints = (Math.floor(Math.random() * 50) + 10) * bet.multiplier; 
+            ranking.push({ user: bet.user_email.split('@')[0], team: bet.roster.map(p => p.name).join(', '), points: totalPoints, multiplier: bet.multiplier });
+        });
+
+        ranking.sort((a, b) => b.points - a.points);
+        if (ranking.length === 0) {
+            container.innerHTML = `<div class="empty-state">No hay apuestas registradas aún.</div>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        ranking.forEach((entry, index) => {
+            let position = index + 1;
+            let medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : position;
+            const div = document.createElement('div');
+            div.className = 'ranking-item';
+            div.innerHTML = `
+                <div class="rank-position">${medal}</div>
+                <div class="rank-info">
+                    <div class="rank-name">${entry.user}</div>
+                    <div class="rank-team">${entry.team}</div>
+                </div>
+                <div class="rank-points">
+                    ${Math.round(entry.points).toLocaleString('es-CO')} pts
+                    <div style="font-size:10px; color:var(--texto-gris); font-weight:normal;">Multip. ${entry.multiplier}x</div>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    } catch (error) { container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar la clasificación.</p>`; }
+}
+
 function cargarCatalogo() {
-    // Premios simulados en base al excel de negocio
     const catalogo = [
         { id: 'r1', nombre: 'Guante de Golf Sintético', puntos: 2000, icono: '🧤' },
         { id: 'r2', nombre: 'Docena Pelotas (Callaway)', puntos: 5000, icono: '⛳' },
         { id: 'r3', nombre: 'Wedge Cleveland', puntos: 15000, icono: '🏌️' },
         { id: 'r4', nombre: 'Driver Callaway', puntos: 50000, icono: '🚀' }
     ];
-    
     const container = document.getElementById('catalogo-list');
     container.innerHTML = '';
-    
     catalogo.forEach(item => {
         const div = document.createElement('div');
         div.className = 'reward-card';
@@ -193,7 +290,7 @@ function cargarCatalogo() {
     });
 }
 
-// --- SELECCIÓN DE ROSTER Y CHECKOUT ---
+// --- SELECCIÓN DE ROSTER ---
 document.getElementById('btnSiguientePago').addEventListener('click', () => {
     state.jugadoresSeleccionados = []; renderizarJugadores(); actualizarEstadoBotonRoster(); showScreen('roster');
 });
@@ -201,10 +298,21 @@ document.getElementById('btnSiguientePago').addEventListener('click', () => {
 function renderizarJugadores() {
     const listContainer = document.getElementById('player-list');
     listContainer.innerHTML = ''; 
+    
     state.torneoActual.players.forEach(player => {
         const div = document.createElement('div');
         div.className = 'player-item';
-        div.innerHTML = `<span class="player-name">${player.name}</span><span class="player-tier">Cat ${player.tier}</span>`;
+        div.innerHTML = `
+            <div class="player-info-container">
+                <img src="${player.photo}" alt="${player.name}" class="player-photo">
+                <div>
+                    <span class="player-name">${player.name}</span>
+                    <span class="player-score">Score: <strong>${player.score}</strong></span>
+                </div>
+            </div>
+            <span class="player-tier">Cat ${player.tier}</span>
+        `;
+        
         div.addEventListener('click', () => {
             const index = state.jugadoresSeleccionados.findIndex(p => p.id === player.id);
             if (index > -1) {
@@ -248,7 +356,7 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
         await new Promise(resolve => setTimeout(resolve, 2000));
         const user = auth.currentUser;
         const docRef = await addDoc(collection(db, "bets"), {
-            user_id: user.uid, user_email: user.email, tournament_id: torneoIdActual, tournament_name: state.torneoActual.name,
+            user_id: user.uid, user_email: user.email, tournament_id: state.torneoActual.id, tournament_name: state.torneoActual.name,
             amount_cop: state.montoSeleccionado, multiplier: state.multiplicador, roster: state.jugadoresSeleccionados,
             payment_status: "APPROVED", created_at: serverTimestamp()
         });
