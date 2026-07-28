@@ -50,7 +50,6 @@ function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     modal.classList.remove('hidden');
     
     const btn = document.getElementById('modal-btn-action');
-    // Limpiar eventos anteriores clonando el botón
     const nuevoBtn = btn.cloneNode(true);
     btn.parentNode.replaceChild(nuevoBtn, btn);
     
@@ -318,16 +317,14 @@ async function cargarRanking() {
             return;
         }
 
-        // Crear mapa rápido de scores reales del torneo actual guardado en BD
         let playerScoresMap = {};
         if (state.torneoActual.players) {
             state.torneoActual.players.forEach(p => {
-                // Convertir score de string (ej. "-5", "+2", "E") a valor numérico para calcular puntos
-                let s = p.score.trim();
+                let s = String(p.score || "E").trim();
                 let val = 0;
                 if (s === "E" || s === "EVEN") val = 0;
-                else if (s.startsWith("+")) val = -parseInt(s.replace("+", "")) * 5; // Penaliza sobre par
-                else if (s.startsWith("-")) val = parseInt(s.replace("-", "")) * 10; // Premia bajo par
+                else if (s.startsWith("+")) val = -parseInt(s.replace("+", "")) * 5; 
+                else if (s.startsWith("-")) val = parseInt(s.replace("-", "")) * 10; 
                 playerScoresMap[p.id] = val;
             });
         }
@@ -341,13 +338,11 @@ async function cargarRanking() {
             const bet = doc.data();
             let basePoints = 0;
 
-            // Sumar puntos reales basados en el rendimiento de los jugadores en la API
             bet.roster.forEach(player => {
-                let puntosJugador = playerScoresMap[player.id] !== undefined ? playerScoresMap[player.id] : 10; // Base por participar
+                let puntosJugador = playerScoresMap[player.id] !== undefined ? playerScoresMap[player.id] : 10; 
                 basePoints += puntosJugador;
             });
 
-            // Aplicar el multiplicador de la inversión del usuario
             let totalPoints = Math.max(10, basePoints * bet.multiplier); 
             let userId = bet.user_id;
             let userName = bet.user_email.split('@')[0];
@@ -395,6 +390,7 @@ async function cargarRanking() {
     }
 }
 
+// --- CARGAR CATÁLOGO DE FORMA SEGURA ---
 function cargarCatalogo() {
     const catalogo = [
         { id: 'r1', nombre: 'Guante de Golf Sintético', puntos: 2000, icono: '🧤' },
@@ -404,6 +400,7 @@ function cargarCatalogo() {
     ];
     const container = document.getElementById('catalogo-list');
     container.innerHTML = '';
+    
     catalogo.forEach(item => {
         const div = document.createElement('div');
         div.className = 'reward-card';
@@ -413,8 +410,13 @@ function cargarCatalogo() {
                 <div class="reward-name">${item.nombre}</div>
                 <div class="reward-pts">${item.puntos.toLocaleString('es-CO')} pts</div>
             </div>
-            <button class="btn-outline btn-small" onclick="mostrarModal('Catálogo', 'La redención de premios estará disponible al finalizar el torneo oficial.', '🎁')">Redimir</button>
+            <button class="btn-outline btn-small btn-redimir">Redimir</button>
         `;
+        
+        div.querySelector('.btn-redimir').addEventListener('click', () => {
+            mostrarModal("Catálogo de Premios", "La redención de premios estará disponible al finalizar el torneo oficial.", "🎁");
+        });
+
         container.appendChild(div);
     });
 }
