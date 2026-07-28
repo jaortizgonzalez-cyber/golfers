@@ -5,12 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Golfers MVP</title>
     
-    <!-- Fuentes Premium de Google -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-    
-    <!-- Enlace al archivo CSS -->
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -80,7 +77,7 @@
         <p class="subtitle-small">Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
         
         <div id="player-list" class="player-list">
-            <!-- Los jugadores se cargarán aquí dinámicamente desde Firestore -->
+            <!-- Los jugadores se cargarán aquí dinámicamente -->
         </div>
 
         <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi ticket <span>&gt;</span></button>
@@ -104,6 +101,20 @@
         </div>
 
         <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: #111827;">Pagar con Bold <span>🔒</span></button>
+    </div>
+
+    <!-- 6. ÉXITO / CONFIRMACIÓN -->
+    <div id="success-screen" class="card text-center hidden">
+        <div class="logo-circle" style="background-color: #10b981; margin-bottom: 20px;">✓</div>
+        <h2 class="serif-title">¡Inscripción Confirmada!</h2>
+        <p class="subtitle-small">Tu pago ha sido procesado con éxito y tu equipo ya está en la Copa.</p>
+        
+        <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
+            <span style="display:block; font-size:12px; color:#166534;">ID de Transacción Seguro</span>
+            <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:14px; word-break: break-all;">...</strong>
+        </div>
+
+        <button id="btnVolverInicio" class="btn-primary">Volver a mis torneos</button>
     </div>
 
     <!-- Enlace al archivo JavaScript -->
