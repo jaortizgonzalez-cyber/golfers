@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Golfers MVP - Selección</title>
+    <!-- Enlace al archivo CSS -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <!-- 1. LOGIN -->
+    <div id="login-screen" class="card text-center">
+        <h1>Golfers ⛳</h1>
+        <p>Tu conocimiento paga</p>
+        <input type="email" id="email" placeholder="Correo electrónico">
+        <input type="password" id="password" placeholder="Contraseña">
+        <button id="btnLogin">Iniciar Sesión</button>
+        <button id="btnRegister" class="btn-secondary">Crear Cuenta</button>
+        <div id="message"></div>
+    </div>
+
+    <!-- 2. LOBBY -->
+    <div id="lobby-screen" class="card hidden">
+        <h2>Hola, <span id="user-email-display">Jugador</span> 👋</h2>
+        
+        <button id="btnSeedDb" class="btn-secondary btn-seed">⚙️ Iniciar Base de Datos (Semilla)</button>
+        
+        <div class="tournament-box">
+            <span class="tournament-label">⛳ TORNEO DE LA SEMANA</span>
+            <h3 id="torneo-nombre">Cargando...</h3>
+            <span id="torneo-campo" class="tournament-label">Cargando...</span>
+            <button id="btnIrSeleccion" class="mt-15">Armar Mi Equipo</button>
+        </div>
+        <button id="btnLogout" class="btn-danger">Cerrar Sesión</button>
+    </div>
+
+    <!-- 3. SELECCIÓN DE MONTO Y EQUIPO -->
+    <div id="seleccion-screen" class="card hidden">
+        <button id="btnVolverLobby" class="btn-secondary btn-back">← Volver</button>
+        <h2>¿Cuánto quieres jugar?</h2>
+        <p>Define tu monto para desbloquear cupos de jugadores y multiplicadores.</p>
+
+        <div class="slider-container">
+            <div class="amount-display" id="amountDisplay">$ 20,000 COP</div>
+            <input type="range" id="betSlider" min="4000" max="150000" step="1000" value="20000">
+            
+            <div class="tier-info">
+                <span>👥 <span id="rosterSizeDisplay">2</span> Jugadores</span>
+                <span>🚀 <span id="multiplierDisplay">5.0x</span> Puntos</span>
+            </div>
+        </div>
+
+        <button id="btnSiguientePago">Continuar a Selección de Jugadores</button>
+    </div>
+
+    <!-- Enlace al archivo JavaScript como Módulo -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
