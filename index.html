@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Copa Fairway — Torneos y Pooles Privados</title>
-    
     <link rel="icon" href="data:,">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -23,7 +22,7 @@
         </div>
     </div>
 
-    <!-- 1. LOGIN / REGISTRO -->
+    <!-- 1. LOGIN -->
     <div id="login-screen" class="card text-center">
         <div class="logo-circle">⛳</div>
         <h1 id="auth-title">Copa Fairway</h1>
@@ -47,9 +46,14 @@
 
     <!-- 2. PANTALLA PRINCIPAL (LOBBY) -->
     <div id="lobby-screen" class="card hidden">
+        
+        <!-- ENCABEZADO RESERVADO E IMPECABLE -->
         <div class="header-top">
-            <h2 class="greeting">Hola, <span id="user-name-display" style="color:var(--verde-fairway);">Jugador</span></h2>
-            <button id="btnLogout" class="btn-logout">Cerrar Sesión</button>
+            <div class="user-status">
+                <span class="status-label">Miembro:</span>
+                <span id="user-name-display" class="status-name">Jugador</span>
+            </div>
+            <button id="btnLogout" class="btn-logout">Cerrar sesión</button>
         </div>
         
         <div class="nav-tabs" id="main-nav-tabs">
@@ -59,30 +63,27 @@
             <button class="tab-btn" id="tab-perfil">Perfil</button>
             <button class="tab-btn" id="tab-reglas">Reglas</button>
             <button class="tab-btn" id="tab-catalogo">Premios</button>
-            <!-- Botón Admin inyectado dinámicamente si es administrador -->
         </div>
 
         <!-- CONTENIDO A: Calendario de Torneos del Mes -->
         <div id="content-torneos" class="tab-content">
             <div class="month-selector-bar">
                 <button id="btnMesAnterior" class="btn-icon">&#10094;</button>
-                <span id="mes-actual-display" class="month-display">Julio 2026</span>
+                <span id="mes-actual-display" class="month-display">Cargando...</span>
                 <button id="btnMesSiguiente" class="btn-icon">&#10095;</button>
             </div>
             
-            <div class="header-section" style="margin-top:10px; margin-bottom: 20px;">
+            <div class="header-section" style="margin-top:15px; margin-bottom: 20px;">
                 <p class="subtitle-small" style="text-align:center; margin: 0;">Participa en el circuito oficial. Los torneos finalizados se bloquean automáticamente.</p>
             </div>
 
-            <div id="calendario-mensual-list" class="tickets-container">
-                <!-- Se inyecta dinámicamente la lista de torneos reales -->
-            </div>
+            <div id="calendario-mensual-list" class="tickets-container"></div>
         </div>
 
         <!-- CONTENIDO B: Mis Inscripciones -->
         <div id="content-apuestas" class="tab-content hidden">
             <h2 class="serif-title mt-15">Mis Inscripciones</h2>
-            <p class="subtitle-small">Modifica tu selección de jugadores hasta 1 hora antes del inicio oficial de la ronda.</p>
+            <p class="subtitle-small">Modifica tu selección de jugadores hasta 1 hora antes del inicio oficial.</p>
             <div id="mis-apuestas-list" class="tickets-container"></div>
         </div>
 
@@ -97,17 +98,13 @@
         <div id="content-perfil" class="tab-content hidden">
             <h2 class="serif-title mt-15">Mi Perfil</h2>
             <p class="subtitle-small">Actualiza tu información personal registrada en la membresía.</p>
-            
             <div class="profile-form">
-                <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Nombre</label>
+                <label class="form-label">Nombre</label>
                 <input type="text" id="profile-nombre" placeholder="Tu nombre">
-                
-                <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Apellidos</label>
+                <label class="form-label">Apellidos</label>
                 <input type="text" id="profile-apellido" placeholder="Tus apellidos">
-                
-                <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Correo electrónico (No modificable)</label>
+                <label class="form-label">Correo electrónico (No modificable)</label>
                 <input type="email" id="profile-email" disabled style="background: #f3f4f6; cursor: not-allowed;">
-                
                 <button id="btnGuardarPerfil" class="btn-primary mt-15">Guardar Cambios</button>
             </div>
         </div>
@@ -120,7 +117,7 @@
                     <div class="rule-icon">📅</div>
                     <div>
                         <h4>1. Calendario de Circuito</h4>
-                        <p>Inscríbete en cada uno de los torneos oficiales programados en el mes para acumular puntos en el ranking general.</p>
+                        <p>Inscríbete en cada uno de los torneos oficiales programados en el mes para acumular puntos.</p>
                     </div>
                 </div>
                 <div class="rule-card">
@@ -134,7 +131,7 @@
                     <div class="rule-icon">⏱️</div>
                     <div>
                         <h4>3. Cierres de Roster</h4>
-                        <p>Los torneos pasados se bloquean automáticamente. Envía tu selección antes de la hora de inicio oficial (Tee time).</p>
+                        <p>Envía tu selección antes de la hora de inicio oficial (Tee time). Los torneos pasados se bloquean automáticamente.</p>
                     </div>
                 </div>
             </div>
@@ -159,15 +156,15 @@
 
             <div class="admin-stats-grid">
                 <div class="admin-stat-card">
-                    <span style="font-size: 11px; color: var(--texto-gris);">Total Recaudado</span>
+                    <span class="form-label">Total Recaudado</span>
                     <strong id="admin-recaudo" style="font-size: 18px; color: var(--verde-fairway);">$0 COP</strong>
                 </div>
                 <div class="admin-stat-card">
-                    <span style="font-size: 11px; color: var(--texto-gris);">Margen (20%)</span>
+                    <span class="form-label">Margen (20%)</span>
                     <strong id="admin-utilidad" style="font-size: 18px; color: #10b981;">$0 COP</strong>
                 </div>
                 <div class="admin-stat-card" style="grid-column: span 2;">
-                    <span style="font-size: 11px; color: var(--texto-gris);">Bolsa Neta Premios y Logística</span>
+                    <span class="form-label">Bolsa Neta Premios y Logística</span>
                     <strong id="admin-bolsa" style="font-size: 18px; color: #d97706;">$0 COP</strong>
                 </div>
             </div>
@@ -209,11 +206,11 @@
         <button id="btnVolverRoster" class="btn-text btn-back">← Ajustar Selección</button>
         <h2 class="serif-title" id="checkout-title">Resumen de Inscripción</h2>
         <div class="checkout-ticket">
-            <div class="ticket-row"><span style="color:var(--texto-gris)">Competencia</span> <strong id="chk-torneo">...</strong></div>
-            <div class="ticket-row"><span style="color:var(--texto-gris)">Inversión</span> <strong id="chk-monto">$0 COP</strong></div>
-            <div class="ticket-row"><span style="color:var(--texto-gris)">Multiplicador</span> <strong id="chk-multiplicador">1.0x</strong></div>
+            <div class="ticket-row"><span class="form-label">Competencia</span> <strong id="chk-torneo">...</strong></div>
+            <div class="ticket-row"><span class="form-label">Inversión</span> <strong id="chk-monto">$0 COP</strong></div>
+            <div class="ticket-row"><span class="form-label">Multiplicador</span> <strong id="chk-multiplicador">1.0x</strong></div>
             <hr style="border: 0; border-top: 1px dashed var(--borde-suave); margin: 15px 0;">
-            <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px;">Jugadores Seleccionados:</div>
+            <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px; font-weight:600;">Jugadores Seleccionados:</div>
             <ul id="chk-equipo" class="equipo-list"></ul>
         </div>
         <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: #111827;">Confirmar Selección 🔒</button>
