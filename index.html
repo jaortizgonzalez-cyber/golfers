@@ -47,9 +47,14 @@
 
     <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
     <div id="lobby-screen" class="card hidden">
+        
+        <!-- ENCABEZADO ELEGANTE -->
         <div class="header-top">
-            <h2 class="greeting">Hola, <span id="user-name-display">Jugador</span></h2>
-            <button id="btnLogout" class="btn-text-small">Cerrar Sesión</button>
+            <div class="user-greeting-box">
+                <span class="welcome-text">Bienvenido,</span>
+                <span id="user-name-display" class="user-name-text">Jugador</span>
+            </div>
+            <button id="btnLogout" class="btn-logout-link">Cerrar sesión</button>
         </div>
         
         <div class="nav-tabs" id="main-nav-tabs">
