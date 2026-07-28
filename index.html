@@ -22,33 +22,42 @@
         </div>
     </div>
 
-    <!-- 1. LOGIN -->
+    <!-- 1. LOGIN / REGISTRO / RECUPERACIÓN -->
     <div id="login-screen" class="card text-center">
         <div class="logo-circle">⛳</div>
-        <h1>Copa Fairway</h1>
-        <p class="subtitle">Quinielas privadas de golf — acceso exclusivo</p>
+        <h1 id="auth-title">Copa Fairway</h1>
+        <p id="auth-subtitle" class="subtitle">Quinielas privadas de golf — acceso exclusivo</p>
         
+        <!-- Campos de Registro (Nombre y Apellidos) -->
+        <div id="register-fields" class="hidden">
+            <input type="text" id="reg-nombre" placeholder="Nombre">
+            <input type="text" id="reg-apellido" placeholder="Apellidos">
+        </div>
+
         <input type="email" id="email" placeholder="Correo electrónico">
         <input type="password" id="password" placeholder="Contraseña">
         
         <button id="btnLogin" class="btn-primary">Entrar al grupo <span>&gt;</span></button>
-        <button id="btnRegister" class="btn-outline">Crear cuenta nueva</button>
+        <button id="btnRegisterToggle" class="btn-outline">Crear cuenta nueva</button>
+        <button id="btnForgotPassword" class="btn-text" style="font-size: 13px; margin-top: 5px; width: 100%;">¿Olvidaste tu contraseña?</button>
         
-        <p class="disclaimer">Plataforma privada de torneos de golf y entretenimiento.</p>
+        <p class="disclaimer">Plataforma privada de torneos de golf segura.</p>
         <div id="message"></div>
     </div>
 
     <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
     <div id="lobby-screen" class="card hidden">
         <div class="header-top">
-            <h2 class="greeting">Hola, <span id="user-email-display">Jugador</span></h2>
+            <h2 class="greeting">Hola, <span id="user-name-display">Jugador</span></h2>
             <button id="btnLogout" class="btn-text-small">Cerrar Sesión</button>
         </div>
         
         <div class="nav-tabs">
             <button class="tab-btn active" id="tab-torneos">Torneos</button>
             <button class="tab-btn" id="tab-apuestas">Tickets</button>
-            <button class="tab-btn" id="tab-ranking">Ranking</button>
+            <button class="tab-btn" id="tab-ranking">Leaderboard</button>
+            <button class="tab-btn" id="tab-perfil">Perfil</button>
+            <button class="tab-btn" id="tab-reglas">Reglas</button>
             <button class="tab-btn" id="tab-catalogo">Catálogo</button>
         </div>
 
@@ -86,7 +95,66 @@
             <div id="ranking-list" class="ranking-container"></div>
         </div>
 
-        <!-- CONTENIDO D: Catálogo de Premios -->
+        <!-- CONTENIDO D: Perfil de Usuario (NUEVO) -->
+        <div id="content-perfil" class="tab-content hidden">
+            <h2 class="serif-title mt-15">Mi Perfil</h2>
+            <p class="subtitle-small">Actualiza tu información personal registrada en la plataforma.</p>
+            
+            <div class="profile-form">
+                <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Nombre</label>
+                <input type="text" id="profile-nombre" placeholder="Tu nombre">
+                
+                <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Apellidos</label>
+                <input type="text" id="profile-apellido" placeholder="Tus apellidos">
+                
+                <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Correo electrónico (No modificable)</label>
+                <input type="email" id="profile-email" disabled style="background: #f3f4f6; cursor: not-allowed;">
+                
+                <button id="btnGuardarPerfil" class="btn-primary mt-15">Guardar Cambios <span>💾</span></button>
+            </div>
+        </div>
+
+        <!-- CONTENIDO E: Reglas del Juego -->
+        <div id="content-reglas" class="tab-content hidden">
+            <h2 class="serif-title mt-15">Reglas de la Copa</h2>
+            <p class="subtitle-small">Todo lo que necesitas saber para competir y ganar en la quiniela.</p>
+            
+            <div class="rules-container">
+                <div class="rule-card">
+                    <div class="rule-icon">💰</div>
+                    <div>
+                        <h4>1. Inversión y Multiplicadores</h4>
+                        <p>Tu monto de inscripción define tu factor multiplicador y la cantidad de cupos disponibles en tu equipo.</p>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-icon">🏌️‍♂️</div>
+                    <div>
+                        <h4>2. Selección Libre de Golfistas</h4>
+                        <p>Libertad absoluta para escoger a los profesionales que prefieras directamente desde el listado oficial.</p>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-icon">⏱️</div>
+                    <div>
+                        <h4>3. Modificación de Equipos</h4>
+                        <p>Puedes cambiar tu roster a través de la pestaña <strong>Tickets</strong> hasta <strong>1 hora</strong> antes del inicio oficial.</p>
+                    </div>
+                </div>
+
+                <div class="rule-card">
+                    <div class="rule-icon">📈</div>
+                    <div>
+                        <h4>4. Sistema de Puntuación</h4>
+                        <p>Puntajes calculados en tiempo real según el rendimiento en el campo multiplicado por el factor de inversión.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- CONTENIDO F: Catálogo de Premios -->
         <div id="content-catalogo" class="tab-content hidden">
             <div class="stats-box mt-15">
                 <div style="font-size: 12px; text-transform: uppercase; font-weight: 600; opacity: 0.9;">Mis Puntos Acumulados</div>
