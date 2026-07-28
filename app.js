@@ -445,12 +445,16 @@ async function cargarMisApuestas(userId) {
                 ? `<button class="btn-outline btn-small btn-editar" data-id="${betId}">Modificar Equipo</button>`
                 : `<span style="font-size:11px; color:var(--rojo-alerta); font-weight:600;">🔒 Edición bloqueada (< 1h o torneo cerrado)</span>`;
 
+            const estadoPago = bet.payment_status === "APPROVED" ? "aprobado" : "pendiente";
+            const estadoPagoLabel = bet.payment_status === "APPROVED" ? "Pago confirmado" : "Pago pendiente";
+
             card.innerHTML = `
                 <div class="ticket-card-header">
                     <span>${bet.tournament_name}</span>
                     <span style="color:var(--verde-fairway)">$${bet.amount_cop.toLocaleString('es-CO')}</span>
                 </div>
                 <div class="ticket-card-body">
+                    <p style="margin:0 0 6px 0;"><span class="payment-badge ${estadoPago}">${estadoPagoLabel}</span></p>
                     <p style="margin:0 0 4px 0;"><strong>Multiplicador:</strong> ${bet.multiplier}x</p>
                     <p style="margin:0 0 10px 0;"><strong>Equipo:</strong> ${jugadoresNombres}</p>
                     ${botonEditarHtml}
@@ -491,6 +495,7 @@ async function iniciarEdicionTicket(ticketId) {
         else state.cuposTotales = 1;
 
         state.jugadoresSeleccionados = [...betData.roster];
+        state.referenciaExistente = betData.payment_reference || '';
 
         document.getElementById('roster-title').textContent = "Modifica tu equipo";
         renderizarJugadores();
@@ -608,18 +613,28 @@ async function cargarPanelAdmin() {
         const querySnapshot = await getDocs(q);
 
         let totalRecaudado = 0;
+        let pagosPendientes = [];
         let premiosPendientesList = [];
 
         querySnapshot.forEach(docSnap => {
             const bet = docSnap.data();
-            totalRecaudado += (bet.amount_cop || 0);
-            
-            premiosPendientesList.push({
-                id: docSnap.id,
-                email: bet.user_email,
-                premio: bet.amount_cop >= 50000 ? "Docena Pelotas Callaway (Amazon)" : "Guante de Golf Sintético",
-                estado: "Pendiente de Envío / Importación"
-            });
+            if (bet.payment_status === "APPROVED") {
+                totalRecaudado += (bet.amount_cop || 0);
+                premiosPendientesList.push({
+                    id: docSnap.id,
+                    email: bet.user_email,
+                    premio: bet.amount_cop >= 50000 ? "Docena Pelotas Callaway (Amazon)" : "Guante de Golf Sintético",
+                    estado: "Pendiente de Envío / Importación"
+                });
+            } else {
+                pagosPendientes.push({
+                    id: docSnap.id,
+                    email: bet.user_email,
+                    torneo: bet.tournament_name,
+                    monto: bet.amount_cop || 0,
+                    referencia: bet.payment_reference || ''
+                });
+            }
         });
 
         let margenUtilidad = totalRecaudado * 0.20;
@@ -629,6 +644,51 @@ async function cargarPanelAdmin() {
         document.getElementById('admin-utilidad').textContent = "$ " + Math.round(margenUtilidad).toLocaleString('es-CO') + " COP";
         document.getElementById('admin-bolsa').textContent = "$ " + Math.round(bolsaNeta).toLocaleString('es-CO') + " COP";
 
+        // --- Pagos pendientes de confirmar (dinero real que el admin debe verificar manualmente) ---
+        const pendContainer = document.getElementById('admin-pagos-pendientes-list');
+        if (pendContainer) {
+            pendContainer.innerHTML = '';
+            if (pagosPendientes.length === 0) {
+                pendContainer.innerHTML = `<div class="empty-state" style="padding:15px; font-size:12px;">No hay pagos pendientes por confirmar.</div>`;
+            } else {
+                pagosPendientes.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'ticket-card';
+                    const refHtml = item.referencia
+                        ? `<p style="margin:0 0 8px 0; font-size:12px;"><strong>Referencia:</strong> ${item.referencia}</p>`
+                        : `<p style="margin:0 0 8px 0; font-size:11.5px; color:var(--texto-gris);">Sin número de referencia — verifica por monto y nombre.</p>`;
+                    div.innerHTML = `
+                        <div class="ticket-card-header">
+                            <span style="font-size:12px;">${item.email}</span>
+                            <span style="color:var(--verde-fairway)">$${item.monto.toLocaleString('es-CO')}</span>
+                        </div>
+                        <div class="ticket-card-body">
+                            <p style="margin:0 0 4px 0; font-size:12px;"><strong>Torneo:</strong> ${item.torneo}</p>
+                            ${refHtml}
+                            <button class="btn-outline btn-small btn-confirmar-pago" data-id="${item.id}">✔️ Confirmar pago recibido</button>
+                        </div>
+                    `;
+                    pendContainer.appendChild(div);
+                });
+
+                document.querySelectorAll('.btn-confirmar-pago').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const betId = e.target.dataset.id;
+                        try {
+                            await updateDoc(doc(db, "bets", betId), {
+                                payment_status: "APPROVED",
+                                confirmed_at: serverTimestamp()
+                            });
+                            mostrarModal("Pago Confirmado", "El pago fue marcado como recibido.", "✅", () => cargarPanelAdmin());
+                        } catch (err) {
+                            mostrarModal("Error", "No se pudo confirmar el pago.", "❌");
+                        }
+                    });
+                });
+            }
+        }
+
+        // --- Premios por entregar (solo de apuestas ya con pago confirmado) ---
         const container = document.getElementById('admin-premios-list');
         container.innerHTML = '';
 
@@ -777,7 +837,7 @@ document.getElementById('btnIrCheckout').addEventListener('click', () => {
     if (state.editandoTicketId) {
         btnPagar.innerHTML = 'Guardar Cambios del Equipo <span>💾</span>';
     } else {
-        btnPagar.innerHTML = 'Pagar con Bold <span>🔒</span>';
+        btnPagar.innerHTML = 'Confirmar inscripción <span>✔️</span>';
     }
 
     const equipoList = document.getElementById('chk-equipo');
@@ -787,10 +847,11 @@ document.getElementById('btnIrCheckout').addEventListener('click', () => {
         li.innerHTML = `<span>${player.name}</span>`;
         equipoList.appendChild(li);
     });
+    document.getElementById('chk-referencia').value = state.editandoTicketId ? (state.referenciaExistente || '') : '';
     showScreen('checkout');
 });
 
-// PROCESAMIENTO O ACTUALIZACIÓN SEGURO
+// PROCESAMIENTO: registro/edición queda PENDIENTE de confirmación manual del admin
 document.getElementById('btnPagarBold').addEventListener('click', async () => {
     if (state.torneoActual?.status === "CLOSED") {
         mostrarModal("Torneo Cerrado", "No se pueden procesar apuestas en un torneo finalizado.", "🔒");
@@ -798,19 +859,22 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
     }
 
     const btn = document.getElementById('btnPagarBold');
-    btn.innerHTML = '<span class="spinner"></span> Procesando pago seguro...'; 
+    btn.innerHTML = '<span class="spinner"></span> Guardando inscripción...'; 
     btn.disabled = true;
 
     try {
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        await new Promise(resolve => setTimeout(resolve, 600));
         const user = auth.currentUser;
         
         if (!user) throw new Error("Usuario no autenticado");
+
+        const referencia = document.getElementById('chk-referencia').value.trim();
 
         if (state.editandoTicketId) {
             const ticketRef = doc(db, "bets", state.editandoTicketId);
             await updateDoc(ticketRef, {
                 roster: state.jugadoresSeleccionados,
+                payment_reference: referencia,
                 updated_at: serverTimestamp()
             });
             document.getElementById('success-tx-id').textContent = state.editandoTicketId + " (Actualizado)";
@@ -823,7 +887,8 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
                 amount_cop: state.montoSeleccionado, 
                 multiplier: state.multiplicador, 
                 roster: state.jugadoresSeleccionados,
-                payment_status: "APPROVED", 
+                payment_status: "PENDIENTE", 
+                payment_reference: referencia,
                 created_at: serverTimestamp()
             });
             document.getElementById('success-tx-id').textContent = docRef.id;
@@ -831,10 +896,10 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
 
         showScreen('success');
     } catch (error) { 
-        mostrarModal("Error", "No pudimos procesar tu solicitud de pago.", "❌");
+        mostrarModal("Error", "No pudimos guardar tu inscripción.", "❌");
     } 
     finally { 
-        btn.innerHTML = state.editandoTicketId ? 'Guardar Cambios del Equipo <span>💾</span>' : 'Pagar con Bold <span>🔒</span>';
+        btn.innerHTML = state.editandoTicketId ? 'Guardar Cambios del Equipo <span>💾</span>' : 'Confirmar inscripción <span>✔️</span>';
         btn.disabled = false; 
     }
 });
