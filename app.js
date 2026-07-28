@@ -1,26 +1,29 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
-    apiKey: "AIzaSyD_FU4S9CYZi2zXka0WAck-DL6r3Sl4XSE",
-  authDomain: "golfers-bf5ec.firebaseapp.com",
-  projectId: "golfers-bf5ec",
-  storageBucket: "golfers-bf5ec.firebasestorage.app",
-  messagingSenderId: "1004442521926",
-  appId: "1:1004442521926:web:6563197e04152d2e6f5547",
-  measurementId: "G-8VGWQ63JZW"
+    apiKey: "TU_API_KEY",
+    authDomain: "golfers-xxxxx.firebaseapp.com",
+    projectId: "golfers-xxxxx",
+    storageBucket: "golfers-xxxxx.appspot.com",
+    messagingSenderId: "XXXXXXXXXXXX",
+    appId: "1:XXXXXXXXXXXX:web:XXXXXXXXXXXXXXXX"
 };
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
 
+const ADMIN_EMAIL = "jaortizgonzalez@gmail.com"; 
 let esModoRegistro = false;
 
+// Estado del mes seleccionado en el calendario (por defecto Julio 2026)
+let mesVisualizado = { ano: 2026, mes: 6 }; // 6 = Julio (0-indexed en JS)
+
 const state = {
-    torneoActual: null,
+    torneoSeleccionado: null,
     montoSeleccionado: 20000,
     multiplicador: 5.0,
     cuposTotales: 2,
@@ -42,7 +45,6 @@ function showScreen(screenName) {
     screens[screenName].classList.remove('hidden');
 }
 
-// --- SISTEMA DE POPUPS / MODALES WOW ---
 function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     const modal = document.getElementById('custom-modal');
     document.getElementById('modal-title').textContent = titulo;
@@ -61,19 +63,36 @@ function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     });
 }
 
-// --- AUTENTICACIÓN Y PERFIL ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         showScreen('lobby');
         await cargarDatosPerfil(user);
-        await cargarTorneoDesdeFirestore(); 
-        cargarCatalogo(); 
+        verificarPermisosAdmin(user.email);
+        await cargarTorneosMensuales(); 
+        cargarPremios(); 
     } else {
         showScreen('login');
     }
 });
 
-// Alternar entre Login y Registro
+function verificarPermisosAdmin(email) {
+    const navTabs = document.getElementById('main-nav-tabs');
+    const tabAdminExistente = document.getElementById('tab-admin');
+    
+    if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        if (!tabAdminExistente) {
+            const btnAdmin = document.createElement('button');
+            btnAdmin.className = 'tab-btn';
+            btnAdmin.id = 'tab-admin';
+            btnAdmin.textContent = 'Admin';
+            btnAdmin.addEventListener('click', () => switchTab('admin'));
+            navTabs.appendChild(btnAdmin);
+        }
+    } else {
+        if (tabAdminExistente) tabAdminExistente.remove();
+    }
+}
+
 document.getElementById('btnRegisterToggle').addEventListener('click', () => {
     esModoRegistro = !esModoRegistro;
     const regFields = document.getElementById('register-fields');
@@ -86,21 +105,20 @@ document.getElementById('btnRegisterToggle').addEventListener('click', () => {
     if (esModoRegistro) {
         regFields.classList.remove('hidden');
         title.textContent = "Nuevo Miembro";
-        sub.textContent = "Regístrate con tus datos personales";
+        sub.textContent = "Registro con membresía preferencial";
         btnLogin.textContent = "Crear Cuenta";
         btnRegToggle.textContent = "← Ya tengo cuenta";
         btnForgot.classList.add('hidden');
     } else {
         regFields.classList.add('hidden');
         title.textContent = "Copa Fairway";
-        sub.textContent = "Quinielas privadas de golf — acceso exclusivo";
-        btnLogin.textContent = "Entrar al grupo";
-        btnRegToggle.textContent = "Crear cuenta nueva";
+        sub.textContent = "Torneos privados y pooles de golf — membresía preferencial";
+        btnLogin.textContent = "Acceder a la plataforma";
+        btnRegToggle.textContent = "Registrar nuevo miembro";
         btnForgot.classList.remove('hidden');
     }
 });
 
-// Botón de Acción Principal (Login / Registro)
 document.getElementById('btnLogin').addEventListener('click', async () => {
     const email = document.getElementById('email').value.trim();
     const password = document.getElementById('password').value;
@@ -136,7 +154,6 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
     }
 });
 
-// Recuperar Contraseña
 document.getElementById('btnForgotPassword').addEventListener('click', async () => {
     const email = document.getElementById('email').value.trim();
     if (!email) {
@@ -153,7 +170,6 @@ document.getElementById('btnForgotPassword').addEventListener('click', async () 
 
 document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
 
-// Cargar y gestionar Perfil
 async function cargarDatosPerfil(user) {
     try {
         const docRef = doc(db, "users", user.uid);
@@ -200,16 +216,11 @@ document.getElementById('btnGuardarPerfil').addEventListener('click', async () =
         document.getElementById('user-name-display').textContent = `${nombre} ${apellido}`;
         mostrarModal("Perfil Actualizado", "Tus datos personales han sido guardados correctamente.", "✨");
     } catch (e) {
-        console.error("Error detallado al actualizar perfil:", e);
-        mostrarModal("Error de Guardado", "No se pudo actualizar el perfil. Revisa tu conexión o permisos en Firestore.", "❌");
+        mostrarModal("Error de Guardado", "No se pudo actualizar el perfil.", "❌");
     }
 });
 
-// --- NAVEGACIÓN Y TABS ---
-document.getElementById('btnIrSeleccion').addEventListener('click', () => {
-    state.editandoTicketId = null; 
-    showScreen('seleccion');
-});
+// NAVEGACIÓN Y TABS
 document.getElementById('btnVolverLobby').addEventListener('click', () => showScreen('lobby'));
 document.getElementById('btnVolverMonto').addEventListener('click', () => showScreen('seleccion'));
 document.getElementById('btnVolverRoster').addEventListener('click', () => showScreen('roster'));
@@ -217,24 +228,31 @@ document.getElementById('btnVolverInicio').addEventListener('click', () => {
     showScreen('lobby'); switchTab('apuestas'); 
 });
 
-const tabs = ['torneos', 'apuestas', 'ranking', 'perfil', 'reglas', 'catalogo'];
+const tabs = ['torneos', 'apuestas', 'ranking', 'perfil', 'reglas', 'catalogo', 'admin'];
 tabs.forEach(tab => {
-    document.getElementById(`tab-${tab}`).addEventListener('click', () => switchTab(tab));
+    const el = document.getElementById(`tab-${tab}`);
+    if (el) el.addEventListener('click', () => switchTab(tab));
 });
 
 function switchTab(activeTab) {
     tabs.forEach(tab => {
-        document.getElementById(`tab-${tab}`).classList.remove('active');
-        document.getElementById(`content-${tab}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-${tab}`);
+        const content = document.getElementById(`content-${tab}`);
+        if (btn) btn.classList.remove('active');
+        if (content) content.classList.add('hidden');
     });
-    document.getElementById(`tab-${activeTab}`).classList.add('active');
-    document.getElementById(`content-${activeTab}`).classList.remove('hidden');
+    
+    const activeBtn = document.getElementById(`tab-${activeTab}`);
+    const activeContent = document.getElementById(`content-${activeTab}`);
+    if (activeBtn) activeBtn.classList.add('active');
+    if (activeContent) activeContent.classList.remove('hidden');
 
     if (activeTab === 'apuestas' && auth.currentUser) cargarMisApuestas(auth.currentUser.uid);
     if (activeTab === 'ranking') cargarRanking();
+    if (activeTab === 'admin' && auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) cargarPanelAdmin();
 }
 
-// --- LÓGICA DEL SLIDER ---
+// SLIDER DE INVERSIÓN
 const slider = document.getElementById('betSlider');
 slider.addEventListener('input', (e) => {
     const amount = parseInt(e.target.value);
@@ -251,7 +269,21 @@ slider.addEventListener('input', (e) => {
     document.getElementById('rosterSizeDisplay').textContent = state.cuposTotales;
 });
 
-// --- SINCRONIZACIÓN API ESPNS -> FIRESTORE ---
+// --- GESTIÓN DE CALENDARIO MENSUAL DE TORNEOS ---
+const nombresMeses = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+document.getElementById('btnMesAnterior').addEventListener('click', () => {
+    mesVisualizado.mes--;
+    if (mesVisualizado.mes < 0) { mesVisualizado.mes = 11; mesVisualizado.ano--; }
+    cargarTorneosMensuales();
+});
+
+document.getElementById('btnMesSiguiente').addEventListener('click', () => {
+    mesVisualizado.mes++;
+    if (mesVisualizado.mes > 11) { mesVisualizado.mes = 0; mesVisualizado.ano++; }
+    cargarTorneosMensuales();
+});
+
 document.getElementById('btnSyncDb').addEventListener('click', async () => {
     const btn = document.getElementById('btnSyncDb');
     btn.textContent = "🔄 Sincronizando en vivo...";
@@ -260,84 +292,211 @@ document.getElementById('btnSyncDb').addEventListener('click', async () => {
     try {
         const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
         const data = await response.json();
-        const event = data.events[0];
         
-        const torneoData = {
-            id: event.id,
-            name: event.shortName || event.name,
-            course: event.courses ? event.courses[0].name : "PGA Tour Course",
-            startDate: event.date, 
-            status: "ACTIVE",
-            updated_at: serverTimestamp(),
-            players: []
-        };
+        // Procesamos los eventos que trae la API
+        for (let event of data.events) {
+            let torneoData = {
+                id: event.id,
+                name: event.shortName || event.name,
+                course: event.courses ? event.courses[0].name : "PGA Tour Course",
+                startDate: event.date, 
+                status: "ACTIVE",
+                updated_at: serverTimestamp(),
+                players: []
+            };
 
-        const competitors = event.competitions[0].competitors;
-        competitors.forEach((comp) => {
-            let photoUrl = comp.athlete.headshot ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
-            
-            let rawScore = comp.score;
-            let displayScore = "E";
-            if (rawScore !== undefined && rawScore !== null) {
-                displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
+            if (event.competitions && event.competitions[0].competitors) {
+                event.competitions[0].competitors.forEach((comp) => {
+                    let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
+                    let rawScore = comp.score;
+                    let displayScore = "E";
+                    if (rawScore !== undefined && rawScore !== null) {
+                        displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
+                    }
+                    torneoData.players.push({
+                        id: comp.athlete.id,
+                        name: comp.athlete.displayName,
+                        score: displayScore,
+                        photo: photoUrl
+                    });
+                });
             }
 
-            torneoData.players.push({
-                id: comp.athlete.id,
-                name: comp.athlete.displayName,
-                score: displayScore,
-                photo: photoUrl
-            });
-        });
+            await setDoc(doc(db, "tournaments", torneoData.id), torneoData);
+        }
 
-        await setDoc(doc(db, "tournaments", torneoData.id), torneoData);
-        state.torneoActual = torneoData;
-        actualizarUIەTorneo();
-        mostrarModal("Sincronización Exitosa", "Los datos oficiales del torneo y los puntajes en vivo se han actualizado correctamente.", "⛳");
+        await cargarTorneosMensuales();
+        mostrarModal("Sincronización Exitosa", "El calendario de torneos del mes y marcadores se han actualizado correctamente.", "⛳");
 
     } catch (error) {
-        mostrarModal("Error de Conexión", "No pudimos sincronizar con los servidores oficiales en este momento.", "⚠️");
+        mostrarModal("Error de Conexión", "No pudimos sincronizar con los servidores oficiales.", "⚠️");
     } finally {
-        btn.textContent = "🔄 Actualizar Torneo en Vivo";
+        btn.textContent = "🔄 Sincronizar Calendario y Marcadores";
         btn.disabled = false;
     }
 });
 
-async function cargarTorneoDesdeFirestore() {
+async function cargarTorneosMensuales() {
+    document.getElementById('mes-actual-display').textContent = `${nombresMeses[mesVisualizado.mes]} ${mesVisualizado.ano}`;
+    const container = document.getElementById('calendario-mensual-list');
+    container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
+
     try {
-        const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
-        const data = await response.json();
-        const eventId = data.events[0].id;
+        // Consultar torneos almacenados en Firestore
+        const querySnapshot = await getDocs(collection(db, "tournaments"));
+        let torneosDelMes = [];
 
-        const docRef = doc(db, "tournaments", eventId);
-        const docSnap = await getDoc(docRef);
+        querySnapshot.forEach(docSnap => {
+            const torneo = docSnap.data();
+            if (torneo.startDate) {
+                const fechaTorneo = new Date(torneo.startDate);
+                if (fechaTorneo.getFullYear() === mesVisualizado.ano && fechaTorneo.getMonth() === mesVisualizado.mes) {
+                    torneosDelMes.push({ ...torneo, docId: docSnap.id });
+                }
+            }
+        });
 
-        if (docSnap.exists()) {
-            state.torneoActual = docSnap.data();
-            actualizarUIەTorneo();
-        } else {
-            document.getElementById('torneo-nombre').textContent = "Torneo disponible para sincronizar";
-            document.getElementById('torneo-campo').textContent = "Haz clic en actualizar para cargar datos.";
+        // Si la API no tiene suficientes torneos para este mes simulado de ejemplo, inyectamos estructura de semanas del mes
+        if (torneosDelMes.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <p>No hay torneos sincronizados para ${nombresMeses[mesVisualizado.mes]} ${mesVisualizado.ano}.</p>
+                    <p style="font-size:12px; color:var(--texto-gris);">Haz clic en "Sincronizar Calendario" para descargar los eventos oficiales de la temporada.</p>
+                </div>
+            `;
+            return;
         }
+
+        // Ordenar por fecha cronológica
+        torneosDelMes.sort((a, b) => new Date(a.startDate) - new Date(b.startDate));
+
+        container.innerHTML = '';
+        const ahora = new Date().getTime();
+
+        torneosDelMes.forEach((torneo, index) => {
+            const fechaInicio = new Date(torneo.startDate);
+            const horaInicioMs = fechaInicio.getTime();
+            let esPasado = ahora > horaInicioMs || torneo.status === "CLOSED";
+
+            const card = document.createElement('div');
+            card.className = `tournament-box ${esPasado ? 'closed-tournament' : ''}`;
+            
+            card.innerHTML = `
+                <div class="tournament-header">
+                    <h3>Semana ${index + 1}: ${torneo.name}</h3>
+                    <span class="badge ${esPasado ? 'badge-closed' : ''}">${esPasado ? 'CERRADO / FINALIZADO' : 'ABIERTO'}</span>
+                </div>
+                <span class="tournament-label">📍 ${torneo.course || 'PGA Tour Course'}</span>
+                <span style="display:block; font-size:12px; color:${esPasado ? '#9ca3af' : 'var(--verde-fairway)'}; font-weight:600; margin-bottom:10px;">
+                    ⏱️ Inicio: ${fechaInicio.toLocaleString()}
+                </span>
+                <button class="btn-outline btn-small btn-inscribir-torneo" data-id="${torneo.id}" ${esPasado ? 'disabled' : ''}>
+                    ${esPasado ? 'Torneo Finalizado' : 'Participar en este Torneo'}
+                </button>
+            `;
+
+            container.appendChild(card);
+        });
+
+        // Vincular eventos de selección a cada torneo abierto
+        document.querySelectorAll('.btn-inscribir-torneo:not([disabled])').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const torneoId = e.target.dataset.id;
+                const torneoEncontrado = torneosDelMes.find(t => t.id === torneoId);
+                if (torneoEncontrado) {
+                    state.torneoSeleccionado = torneoEncontrado;
+                    showScreen('seleccion');
+                }
+            });
+        });
+
     } catch (e) {
-        console.error("Error leyendo Firestore:", e);
+        console.error("Error cargando calendario mensual:", e);
+        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar los torneos del mes.</p>`;
     }
 }
 
-function actualizarUIەTorneo() {
-    if (!state.torneoActual) return;
-    document.getElementById('torneo-nombre').textContent = state.torneoActual.name;
-    document.getElementById('torneo-campo').textContent = state.torneoActual.course;
-    document.getElementById('chk-torneo').textContent = state.torneoActual.name;
+// SELECCIÓN Y APUESTA
+document.getElementById('btnSiguientePago').addEventListener('click', () => {
+    if (!state.torneoSeleccionado) {
+        mostrarModal("Selección Requerida", "Por favor selecciona un torneo activo del mes.", "⚠️");
+        return;
+    }
+    state.jugadoresSeleccionados = []; 
+    document.getElementById('roster-title').textContent = `Arma tu cuadro para ${state.torneoSeleccionado.name}`;
+    renderizarJugadores(); 
+    actualizarEstadoBotonRoster(); 
+    showScreen('roster');
+});
+
+function renderizarJugadores() {
+    const listContainer = document.getElementById('player-list');
+    listContainer.innerHTML = ''; 
     
-    if (state.torneoActual.startDate) {
-        const fechaInicio = new Date(state.torneoActual.startDate);
-        document.getElementById('torneo-inicio').textContent = "⏱️ Inicia: " + fechaInicio.toLocaleString();
-    }
-    document.getElementById('btnIrSeleccion').disabled = false;
+    if (!state.torneoSeleccionado || !state.torneoSeleccionado.players) return;
+
+    const jugadoresOrdenados = [...state.torneoSeleccionado.players].sort((a, b) => 
+        a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+    );
+
+    jugadoresOrdenados.forEach(player => {
+        const div = document.createElement('div');
+        div.className = 'player-item';
+        
+        const yaSeleccionado = state.jugadoresSeleccionados.some(p => p.id === player.id);
+        if (yaSeleccionado) div.classList.add('selected');
+
+        div.innerHTML = `
+            <div class="player-info-container">
+                <img src="${player.photo}" alt="${player.name}" class="player-photo" onerror="this.src='https://a.espncdn.com/i/headshots/golf/players/full/default.png'">
+                <div>
+                    <span class="player-name">${player.name}</span>
+                    <span class="player-score">Score: <strong>${player.score}</strong></span>
+                </div>
+            </div>
+        `;
+        
+        div.addEventListener('click', () => {
+            const index = state.jugadoresSeleccionados.findIndex(p => p.id === player.id);
+            if (index > -1) {
+                state.jugadoresSeleccionados.splice(index, 1);
+                div.classList.remove('selected');
+            } else {
+                if (state.jugadoresSeleccionados.length < state.cuposTotales) {
+                    state.jugadoresSeleccionados.push(player);
+                    div.classList.add('selected');
+                } else {
+                    mostrarModal("Límite de Cupos", `Ya tienes el máximo de ${state.cuposTotales} jugador(es).`, "⚠️");
+                }
+            }
+            actualizarEstadoBotonRoster();
+        });
+        listContainer.appendChild(div);
+    });
 }
 
-// --- CARGAR MIS APUESTAS ---
+function actualizarEstadoBotonRoster() {
+    const faltantes = state.cuposTotales - state.jugadoresSeleccionados.length;
+    document.getElementById('cupos-restantes').textContent = faltantes;
+    document.getElementById('btnIrCheckout').disabled = (faltantes !== 0);
+}
+
+document.getElementById('btnIrCheckout').addEventListener('click', () => {
+    document.getElementById('chk-torneo').textContent = state.torneoSeleccionado.name;
+    document.getElementById('chk-monto').textContent = "$ " + state.montoSeleccionado.toLocaleString('es-CO') + " COP";
+    document.getElementById('chk-multiplicador').textContent = state.multiplicador.toFixed(1) + "x";
+    
+    const equipoList = document.getElementById('chk-equipo');
+    equipoList.innerHTML = '';
+    state.jugadoresSeleccionados.forEach(player => {
+        const li = document.createElement('li');
+        li.innerHTML = `<span>${player.name}</span>`;
+        equipoList.appendChild(li);
+    });
+    showScreen('checkout');
+});
+
+// MIS APUESTAS
 async function cargarMisApuestas(userId) {
     const container = document.getElementById('mis-apuestas-list');
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
@@ -347,16 +506,8 @@ async function cargarMisApuestas(userId) {
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-            container.innerHTML = `<div class="empty-state">No tienes tickets registrados en este torneo.</div>`;
+            container.innerHTML = `<div class="empty-state">No tienes apuestas registradas en este mes.</div>`;
             return;
-        }
-
-        let sePuedeModificar = true;
-        if (state.torneoActual && state.torneoActual.startDate) {
-            const horaInicioTorneo = new Date(state.torneoActual.startDate).getTime();
-            const ahora = new Date().getTime();
-            const diferenciaMinutos = (horaInicioTorneo - ahora) / (1000 * 60);
-            if (diferenciaMinutos < 60) sePuedeModificar = false; 
         }
 
         container.innerHTML = ''; 
@@ -367,11 +518,6 @@ async function cargarMisApuestas(userId) {
             
             const card = document.createElement('div');
             card.className = 'ticket-card';
-            
-            let botonEditarHtml = sePuedeModificar 
-                ? `<button class="btn-outline btn-small btn-editar" data-id="${betId}">Modificar Equipo</button>`
-                : `<span style="font-size:11px; color:#ef4444; font-weight:600;">🔒 Edición bloqueada (< 1h para inicio)</span>`;
-
             card.innerHTML = `
                 <div class="ticket-card-header">
                     <span>${bet.tournament_name}</span>
@@ -379,57 +525,24 @@ async function cargarMisApuestas(userId) {
                 </div>
                 <div class="ticket-card-body">
                     <p style="margin:0 0 4px 0;"><strong>Multiplicador:</strong> ${bet.multiplier}x</p>
-                    <p style="margin:0 0 10px 0;"><strong>Equipo:</strong> ${jugadoresNombres}</p>
-                    ${botonEditarHtml}
+                    <p style="margin:0 0 10px 0;"><strong>Cuadro:</strong> ${jugadoresNombres}</p>
                 </div>
             `;
             container.appendChild(card);
         });
-
-        document.querySelectorAll('.btn-editar').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
-                await iniciarEdicionTicket(e.target.dataset.id);
-            });
-        });
-
     } catch (error) { 
-        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar los tickets.</p>`; 
+        container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar las apuestas.</p>`; 
     }
 }
 
-async function iniciarEdicionTicket(ticketId) {
-    const docRef = doc(db, "bets", ticketId);
-    const docSnap = await getDoc(docRef);
-    
-    if (docSnap.exists()) {
-        const betData = docSnap.data();
-        state.editandoTicketId = ticketId;
-        state.montoSeleccionado = betData.amount_cop;
-        state.multiplicador = betData.multiplier;
-        
-        if (betData.amount_cop >= 20000 && betData.amount_cop < 40000) state.cuposTotales = 2;
-        else if (betData.amount_cop >= 40000 && betData.amount_cop < 60000) state.cuposTotales = 3;
-        else if (betData.amount_cop >= 60000 && betData.amount_cop < 80000) state.cuposTotales = 4;
-        else if (betData.amount_cop >= 80000) state.cuposTotales = 5;
-        else state.cuposTotales = 1;
-
-        state.jugadoresSeleccionados = [...betData.roster];
-
-        document.getElementById('roster-title').textContent = "Modifica tu equipo";
-        renderizarJugadores();
-        actualizarEstadoBotonRoster();
-        showScreen('roster');
-    }
-}
-
-// --- LEADERBOARD CON NOMBRES REALES Y PUNTAJE DE ESPN ---
+// LEADERBOARD
 async function cargarRanking() {
     const container = document.getElementById('ranking-list');
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
 
     try {
-        if(!state.torneoActual) {
-            container.innerHTML = `<div class="empty-state">Actualiza el torneo primero.</div>`;
+        if(!state.torneoSeleccionado) {
+            container.innerHTML = `<div class="empty-state">Selecciona un torneo para ver su Leaderboard.</div>`;
             return;
         }
 
@@ -441,8 +554,8 @@ async function cargarRanking() {
         });
 
         let playerScoresMap = {};
-        if (state.torneoActual.players) {
-            state.torneoActual.players.forEach(p => {
+        if (state.torneoSeleccionado.players) {
+            state.torneoSeleccionado.players.forEach(p => {
                 let s = String(p.score || "E").trim();
                 let val = 0;
                 if (s === "E" || s === "EVEN") val = 0;
@@ -452,20 +565,17 @@ async function cargarRanking() {
             });
         }
 
-        const q = query(collection(db, "bets"), where("tournament_id", "==", state.torneoActual.id));
+        const q = query(collection(db, "bets"), where("tournament_id", "==", state.torneoSeleccionado.id));
         const querySnapshot = await getDocs(q);
 
         let usuariosMap = {};
-
         querySnapshot.forEach((doc) => {
             const bet = doc.data();
             let basePoints = 0;
-
             bet.roster.forEach(player => {
                 let puntosJugador = playerScoresMap[player.id] !== undefined ? playerScoresMap[player.id] : 10; 
                 basePoints += puntosJugador;
             });
-
             let totalPoints = Math.max(10, basePoints * bet.multiplier); 
             let userId = bet.user_id;
             let nombreUsuario = usersMap[userId] || bet.user_email.split('@')[0];
@@ -484,7 +594,7 @@ async function cargarRanking() {
         ranking.sort((a, b) => b.points - a.points);
 
         if (ranking.length === 0) {
-            container.innerHTML = `<div class="empty-state">No hay tickets registrados aún para este torneo.</div>`;
+            container.innerHTML = `<div class="empty-state">No hay apuestas registradas en este torneo.</div>`;
             return;
         }
 
@@ -508,18 +618,16 @@ async function cargarRanking() {
             container.appendChild(div);
         });
     } catch (error) { 
-        console.error(error);
         container.innerHTML = `<p style="color:red; font-size:13px;">Error al cargar la clasificación.</p>`; 
     }
 }
 
-// --- CARGAR CATÁLOGO DE FORMA SEGURA ---
-function cargarCatalogo() {
+// PREMIOS
+function cargarPremios() {
     const catalogo = [
-        { id: 'r1', nombre: 'Guante de Golf Sintético', puntos: 2000, icono: '🧤' },
-        { id: 'r2', nombre: 'Docena Pelotas (Callaway)', puntos: 5000, icono: '⛳' },
-        { id: 'r3', nombre: 'Wedge Cleveland', puntos: 15000, icono: '🏌️' },
-        { id: 'r4', nombre: 'Driver Callaway', puntos: 50000, icono: '🚀' }
+        { id: 'r1', nombre: 'Guante de Golf Sintético (Envío económico)', puntos: 2000, icono: '🧤' },
+        { id: 'r2', nombre: 'Docena Pelotas Callaway (Stock Amazon)', puntos: 5000, icono: '⛳' },
+        { id: 'r3', nombre: 'Wedge Liviano Especializado', puntos: 15000, icono: '🏌️' }
     ];
     const container = document.getElementById('catalogo-list');
     container.innerHTML = '';
@@ -535,95 +643,14 @@ function cargarCatalogo() {
             </div>
             <button class="btn-outline btn-small btn-redimir">Redimir</button>
         `;
-        
         div.querySelector('.btn-redimir').addEventListener('click', () => {
-            mostrarModal("Catálogo de Premios", "La redención de premios estará disponible al finalizar el torneo oficial.", "🎁");
+            mostrarModal("Premios", "Los premios de bajo peso de envío se despachan con la bolsa neta recaudada.", "🎁");
         });
-
         container.appendChild(div);
     });
 }
 
-// --- SELECCIÓN DE ROSTER ---
-document.getElementById('btnSiguientePago').addEventListener('click', () => {
-    state.jugadoresSeleccionados = []; 
-    document.getElementById('roster-title').textContent = "Arma tu equipo";
-    renderizarJugadores(); 
-    actualizarEstadoBotonRoster(); 
-    showScreen('roster');
-});
-
-function renderizarJugadores() {
-    const listContainer = document.getElementById('player-list');
-    listContainer.innerHTML = ''; 
-    
-    state.torneoActual.players.forEach(player => {
-        const div = document.createElement('div');
-        div.className = 'player-item';
-        
-        const yaSeleccionado = state.jugadoresSeleccionados.some(p => p.id === player.id);
-        if (yaSeleccionado) {
-            div.classList.add('selected');
-        }
-
-        div.innerHTML = `
-            <div class="player-info-container">
-                <img src="${player.photo}" alt="${player.name}" class="player-photo">
-                <div>
-                    <span class="player-name">${player.name}</span>
-                    <span class="player-score">Score: <strong>${player.score}</strong></span>
-                </div>
-            </div>
-        `;
-        
-        div.addEventListener('click', () => {
-            const index = state.jugadoresSeleccionados.findIndex(p => p.id === player.id);
-            
-            if (index > -1) {
-                state.jugadoresSeleccionados.splice(index, 1);
-                div.classList.remove('selected');
-            } else {
-                if (state.jugadoresSeleccionados.length < state.cuposTotales) {
-                    state.jugadoresSeleccionados.push(player);
-                    div.classList.add('selected');
-                } else {
-                    mostrarModal("Límite de Cupos", `Ya tienes el máximo de ${state.cuposTotales} jugador(es) seleccionados. Desmarca uno si deseas cambiarlo.`, "⚠️");
-                }
-            }
-            actualizarEstadoBotonRoster();
-        });
-        listContainer.appendChild(div);
-    });
-}
-
-function actualizarEstadoBotonRoster() {
-    const faltantes = state.cuposTotales - state.jugadoresSeleccionados.length;
-    document.getElementById('cupos-restantes').textContent = faltantes;
-    document.getElementById('btnIrCheckout').disabled = (faltantes !== 0);
-}
-
-document.getElementById('btnIrCheckout').addEventListener('click', () => {
-    document.getElementById('chk-monto').textContent = "$ " + state.montoSeleccionado.toLocaleString('es-CO') + " COP";
-    document.getElementById('chk-multiplicador').textContent = state.multiplicador.toFixed(1) + "x";
-    
-    const btnPagar = document.getElementById('btnPagarBold');
-    if (state.editandoTicketId) {
-        btnPagar.innerHTML = 'Guardar Cambios del Equipo <span>💾</span>';
-    } else {
-        btnPagar.innerHTML = 'Pagar con Bold <span>🔒</span>';
-    }
-
-    const equipoList = document.getElementById('chk-equipo');
-    equipoList.innerHTML = '';
-    state.jugadoresSeleccionados.forEach(player => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span>${player.name}</span>`;
-        equipoList.appendChild(li);
-    });
-    showScreen('checkout');
-});
-
-// PROCESAMIENTO O ACTUALIZACIÓN
+// PAGO SEGURO BOLD
 document.getElementById('btnPagarBold').addEventListener('click', async () => {
     const btn = document.getElementById('btnPagarBold');
     btn.innerHTML = '<span class="spinner"></span> Procesando pago seguro...'; 
@@ -632,28 +659,56 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
     try {
         await new Promise(resolve => setTimeout(resolve, 1500));
         const user = auth.currentUser;
-        
-        if (state.editandoTicketId) {
-            const ticketRef = doc(db, "bets", state.editandoTicketId);
-            await updateDoc(ticketRef, {
-                roster: state.jugadoresSeleccionados,
-                updated_at: serverTimestamp()
-            });
-            document.getElementById('success-tx-id').textContent = state.editandoTicketId + " (Actualizado)";
-        } else {
-            const docRef = await addDoc(collection(db, "bets"), {
-                user_id: user.uid, user_email: user.email, tournament_id: state.torneoActual.id, tournament_name: state.torneoActual.name,
-                amount_cop: state.montoSeleccionado, multiplier: state.multiplicador, roster: state.jugadoresSeleccionados,
-                payment_status: "APPROVED", created_at: serverTimestamp()
-            });
-            document.getElementById('success-tx-id').textContent = docRef.id;
-        }
+        if (!user) throw new Error("Usuario no autenticado");
 
+        const docRef = await addDoc(collection(db, "bets"), {
+            user_id: user.uid, 
+            user_email: user.email, 
+            tournament_id: state.torneoSeleccionado.id, 
+            tournament_name: state.torneoSeleccionado.name,
+            amount_cop: state.montoSeleccionado, 
+            multiplier: state.multiplicador, 
+            roster: state.jugadoresSeleccionados,
+            payment_status: "APPROVED", 
+            created_at: serverTimestamp()
+        });
+        document.getElementById('success-tx-id').textContent = docRef.id;
         showScreen('success');
     } catch (error) { 
-        mostrarModal("Error", "No pudimos procesar tu solicitud de pago. Intenta de nuevo.", "❌");
-    } 
-    finally { 
+        mostrarModal("Error", "No pudimos procesar tu solicitud de pago.", "❌");
+    } finally { 
+        btn.innerHTML = 'Pagar con Bold <span>🔒</span>';
         btn.disabled = false; 
     }
 });
+
+// PANEL ADMIN
+async function cargarPanelAdmin() {
+    try {
+        const q = query(collection(db, "bets"));
+        const querySnapshot = await getDocs(q);
+        let totalRecaudado = 0;
+        let premiosList = [];
+
+        querySnapshot.forEach(docSnap => {
+            const bet = docSnap.data();
+            totalRecaudado += (bet.amount_cop || 0);
+            premiosList.push({ email: bet.user_email, premio: "Docena Pelotas Callaway (Amazon)" });
+        });
+
+        document.getElementById('admin-recaudo').textContent = "$ " + totalRecaudado.toLocaleString('es-CO') + " COP";
+        document.getElementById('admin-utilidad').textContent = "$ " + Math.round(totalRecaudado * 0.20).toLocaleString('es-CO') + " COP";
+        document.getElementById('admin-bolsa').textContent = "$ " + Math.round(totalRecaudado * 0.80).toLocaleString('es-CO') + " COP";
+
+        const container = document.getElementById('admin-premios-list');
+        container.innerHTML = premiosList.length === 0 ? '<div class="empty-state" style="font-size:12px;">Sin premios pendientes.</div>' : '';
+        premiosList.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'ticket-card';
+            div.innerHTML = `<div class="ticket-card-header"><span>Ganador: ${item.email}</span></div><div class="ticket-card-body"><p style="margin:0; font-size:12px;">🎁 ${item.premio}</p></div>`;
+            container.appendChild(div);
+        });
+    } catch (e) {
+        console.error(e);
+    }
+}
