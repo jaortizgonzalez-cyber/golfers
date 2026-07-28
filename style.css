@@ -7,42 +7,28 @@
     --blanco: #ffffff;
 }
 
-body { 
-    font-family: 'Inter', sans-serif; background-color: var(--bg-crema); color: var(--texto-oscuro);
-    margin: 0; padding: 20px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;
-}
-
+body { font-family: 'Inter', sans-serif; background-color: var(--bg-crema); color: var(--texto-oscuro); margin: 0; padding: 20px; display: flex; justify-content: center; align-items: flex-start; min-height: 100vh; }
 h1, h2, .serif-title { font-family: 'Playfair Display', serif; color: var(--texto-oscuro); font-weight: 600; }
 h1 { font-size: 28px; margin-bottom: 5px; }
 h2 { font-size: 24px; margin-top: 0; margin-bottom: 15px; }
 .greeting { margin-bottom: 0; }
-
-.card { 
-    background: var(--blanco); padding: 40px 30px; border-radius: 16px; 
-    box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 420px; text-align: left; 
-}
-
+.card { background: var(--blanco); padding: 40px 30px; border-radius: 16px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); width: 100%; max-width: 420px; text-align: left; }
 .text-center { text-align: center; }
 .subtitle { color: var(--texto-gris); font-size: 14px; margin-bottom: 30px; }
 .subtitle-small { color: var(--texto-gris); font-size: 13px; line-height: 1.5; margin-bottom: 20px;}
 .disclaimer { font-size: 11px; color: #9ca3af; margin-top: 20px; line-height: 1.4; }
 .mt-15 { margin-top: 15px; }
 
-/* Navegación y Tabs */
+.live-dot { height: 10px; width: 10px; background-color: #ef4444; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
+
 .header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .nav-tabs { display: flex; background: #f3f4f6; padding: 5px; border-radius: 10px; margin-bottom: 20px; gap: 4px; }
-.tab-btn {
-    flex: 1; background: transparent; color: var(--texto-gris); border: none; padding: 8px 4px;
-    font-size: 12px; font-weight: 600; margin-bottom: 0; border-radius: 8px; transition: all 0.3s;
-}
+.tab-btn { flex: 1; background: transparent; color: var(--texto-gris); border: none; padding: 8px 4px; font-size: 12px; font-weight: 600; margin-bottom: 0; border-radius: 8px; transition: all 0.3s; }
 .tab-btn.active { background: var(--blanco); color: var(--verde-fairway); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
-input[type="email"], input[type="password"] { 
-    width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid var(--borde-suave); 
-    border-radius: 8px; font-size: 15px; font-family: 'Inter', sans-serif; box-sizing: border-box;
-}
+input[type="email"], input[type="password"] { width: 100%; padding: 14px; margin-bottom: 15px; border: 1px solid var(--borde-suave); border-radius: 8px; font-size: 15px; font-family: 'Inter', sans-serif; box-sizing: border-box; }
 input:focus { outline: none; border-color: var(--verde-fairway); }
-
 button { font-family: 'Inter', sans-serif; width: 100%; padding: 14px; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; margin-bottom: 12px; display: flex; justify-content: center; align-items: center; gap: 8px; }
 .btn-primary { background-color: var(--verde-fairway); color: var(--blanco); border: none; }
 .btn-primary:hover { background-color: #1e3f2b; }
@@ -52,14 +38,13 @@ button { font-family: 'Inter', sans-serif; width: 100%; padding: 14px; border-ra
 .btn-text:hover { color: var(--texto-oscuro); }
 .btn-text-small { background: none; border: none; color: #dc2626; font-size: 12px; width: auto; padding: 0; margin: 0; }
 .btn-back { width: auto; justify-content: flex-start; padding-left: 0; margin-bottom: 10px; }
+.btn-seed { background: #fef08a; border: 1px solid #eab308; color: #854d0e; font-size: 12px; }
 
 .logo-circle { background-color: var(--verde-fairway); color: white; width: 50px; height: 50px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 20px auto; }
-
 .tournament-box { border-top: 1px solid #f3f4f6; border-bottom: 1px solid #f3f4f6; padding: 20px 0; margin-top: 15px; }
 .tournament-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px; }
 .tournament-header h3 { margin: 0; font-size: 18px; }
 .tournament-label { font-size: 13px; color: var(--texto-gris); }
-
 .badge { background-color: var(--verde-fairway); color: white; font-size: 10px; font-weight: 600; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.5px; }
 
 .slider-container { background: #faf9f6; padding: 25px 20px; border-radius: 12px; border: 1px solid var(--bg-crema); margin-bottom: 25px; text-align: center; }
@@ -67,22 +52,24 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--verde-fai
 .amount-display { font-size: 28px; font-weight: 700; color: var(--verde-fairway); font-family: 'Playfair Display', serif; }
 .tier-info { display: flex; justify-content: space-between; background: var(--blanco); padding: 12px 15px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--texto-oscuro); border: 1px solid #f3f4f6; }
 
-.player-list { max-height: 320px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px; }
-.player-item { display: flex; justify-content: space-between; align-items: center; padding: 14px; border: 1px solid var(--borde-suave); border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; }
+.player-list { max-height: 380px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px; }
+.player-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--borde-suave); border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; background: var(--blanco); }
 .player-item:hover { border-color: var(--verde-fairway); }
-.player-item.selected { border-color: var(--verde-fairway); background-color: #f0fdf4; box-shadow: inset 0 0 0 1px var(--verde-fairway); }
-.player-name { font-weight: 600; font-size: 15px; }
-.player-tier { font-size: 11px; background: #f3f4f6; color: var(--texto-gris); padding: 3px 8px; border-radius: 12px; font-weight: 600; }
+.player-item.selected { border-color: var(--verde-fairway); background-color: #f0fdf4; box-shadow: inset 0 0 0 1.5px var(--verde-fairway); }
+.player-info-container { display: flex; align-items: center; gap: 12px; }
+.player-photo { width: 45px; height: 45px; border-radius: 50%; object-fit: cover; border: 1px solid #e5e7eb; background: #f3f4f6; }
+.player-name { font-weight: 600; font-size: 14px; display: block; }
+.player-score { font-size: 11px; color: var(--texto-gris); display: block; margin-top: 2px;}
+.player-tier { font-size: 11px; background: #f3f4f6; color: var(--texto-gris); padding: 4px 8px; border-radius: 12px; font-weight: 600; }
 .player-item.selected .player-tier { background: var(--verde-fairway); color: white; }
 
-button:disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed; }
+button:disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed; border: none; }
 
 .checkout-ticket { background: #faf9f6; padding: 20px; border-radius: 12px; border: 1px solid #e5e7eb; }
 .ticket-row { display: flex; justify-content: space-between; font-size: 15px; margin-bottom: 12px; }
 .equipo-list { list-style: none; padding: 0; margin: 0; font-size: 14px; font-weight: 600;}
 .equipo-list li { margin-bottom: 8px; display: flex; justify-content: space-between; color: var(--texto-oscuro); }
 
-/* Mis Apuestas */
 .tickets-container { max-height: 400px; overflow-y: auto; }
 .ticket-card { background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 12px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
 .ticket-card-header { display: flex; justify-content: space-between; border-bottom: 1px solid #f3f4f6; padding-bottom: 10px; margin-bottom: 10px; font-size: 14px; font-weight: 600; }
@@ -90,7 +77,6 @@ button:disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed
 .ticket-card-body strong { color: var(--texto-oscuro); }
 .empty-state { text-align: center; padding: 40px 20px; background: #faf9f6; border-radius: 12px; border: 1px dashed var(--borde-suave); }
 
-/* --- NUEVO: Estilos Catálogo y Puntos --- */
 .stats-box { background-color: var(--verde-fairway); color: white; padding: 25px 20px; border-radius: 16px; margin-bottom: 20px; text-align: left; }
 .progress-bar { background-color: rgba(255,255,255,0.2); border-radius: 4px; height: 8px; width: 100%; margin-top: 15px; overflow: hidden; }
 .progress-fill { background-color: #4ade80; height: 100%; border-radius: 4px; }
@@ -101,8 +87,16 @@ button:disabled { background-color: #e5e7eb; color: #9ca3af; cursor: not-allowed
 .reward-pts { font-size: 13px; color: var(--verde-fairway); font-weight: bold; margin-bottom: 12px; }
 .btn-small { padding: 8px; font-size: 12px; margin-bottom: 0; }
 
+.ranking-container { margin-top: 15px; max-height: 400px; overflow-y: auto; padding-right: 5px; }
+.ranking-item { display: flex; align-items: center; background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 12px; padding: 15px; margin-bottom: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.02); }
+.rank-position { font-size: 20px; font-weight: bold; color: var(--verde-fairway); width: 35px; text-align: center; margin-right: 15px; }
+.rank-info { flex: 1; overflow: hidden; }
+.rank-name { font-size: 14px; font-weight: 600; color: var(--texto-oscuro); margin-bottom: 4px; }
+.rank-team { font-size: 12px; color: var(--texto-gris); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
+.rank-points { font-size: 16px; font-weight: bold; color: var(--texto-oscuro); text-align: right; }
+
 .hidden { display: none !important; }
 #message { margin-top: 15px; font-weight: 500; font-size: 13px; color: #dc2626; }
-
-.spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid white; width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; }
+.spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid var(--verde-fairway); width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; }
+.btn-primary .spinner { border-top: 3px solid white; }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
