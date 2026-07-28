@@ -30,7 +30,17 @@ h2 { font-size: 24px; margin-top: 0; margin-bottom: 15px; }
 .live-dot { height: 10px; width: 10px; background-color: #ef4444; border-radius: 50%; display: inline-block; animation: pulse 1.5s infinite; }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.7); } 70% { box-shadow: 0 0 0 6px rgba(239, 68, 68, 0); } 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); } }
 
-.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+/* -----------------------------------------
+   NUEVO ENCABEZADO ELEGANTE Y MINIMALISTA
+   ----------------------------------------- */
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #f3f4f6; padding-bottom: 15px; }
+.user-greeting-box { display: flex; align-items: baseline; gap: 6px; }
+.welcome-text { font-size: 14px; color: var(--texto-gris); font-weight: 500; }
+.user-name-text { font-size: 16px; font-weight: 600; color: var(--texto-oscuro); font-family: 'Playfair Display', serif; }
+.btn-logout-link { background: transparent; border: none; color: #9ca3af; font-size: 12px; font-weight: 500; cursor: pointer; padding: 0; text-decoration: underline; transition: color 0.2s; white-space: nowrap; }
+.btn-logout-link:hover { color: var(--texto-oscuro); }
+/* ----------------------------------------- */
+
 .nav-tabs { display: flex; background: #f3f4f6; padding: 4px; border-radius: 10px; margin-bottom: 20px; gap: 2px; flex-wrap: wrap; }
 .tab-btn { flex: 1; background: transparent; color: var(--texto-gris); border: none; padding: 6px 2px; font-size: 9px; font-weight: 600; margin-bottom: 0; border-radius: 8px; transition: all 0.3s; min-width: 50px; }
 .tab-btn.active { background: var(--blanco); color: var(--verde-fairway); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
@@ -44,7 +54,6 @@ button { font-family: 'Inter', sans-serif; width: 100%; padding: 14px; border-ra
 .btn-outline:hover { background-color: #f0fdf4; }
 .btn-text { background: none; border: none; color: var(--texto-gris); font-weight: 500; padding: 10px; }
 .btn-text:hover { color: var(--texto-oscuro); }
-.btn-text-small { background: none; border: none; color: #dc2626; font-size: 12px; width: auto; padding: 0; margin: 0; }
 .btn-back { width: auto; justify-content: flex-start; padding-left: 0; margin-bottom: 10px; }
 .btn-seed { background: #fef08a; border: 1px solid #eab308; color: #854d0e; font-size: 12px; }
 
