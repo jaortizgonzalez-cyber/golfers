@@ -13,21 +13,21 @@
 </head>
 <body>
 
-    <!-- MODAL / POPUP PROFESIONAL WOW -->
+    <!-- MODAL / POPUP PROFESIONAL -->
     <div id="custom-modal" class="modal-overlay hidden">
         <div class="modal-card">
             <div id="modal-icon" class="modal-icon">✨</div>
-            <h3 id="modal-title" class="serif-title">Aviso Importante</h3>
+            <h3 id="modal-title" class="serif-title">Aviso</h3>
             <p id="modal-message" class="modal-msg">Mensaje del sistema...</p>
             <button id="modal-btn-action" class="btn-primary">Entendido</button>
         </div>
     </div>
 
-    <!-- 1. LOGIN / REGISTRO / RECUPERACIÓN -->
+    <!-- 1. LOGIN / REGISTRO -->
     <div id="login-screen" class="card text-center">
         <div class="logo-circle">⛳</div>
         <h1 id="auth-title">Copa Fairway</h1>
-        <p id="auth-subtitle" class="subtitle">Torneos privados y pooles de golf — membresía preferencial</p>
+        <p id="auth-subtitle" class="subtitle">Torneos privados y pooles de golf</p>
         
         <div id="register-fields" class="hidden">
             <input type="text" id="reg-nombre" placeholder="Nombre">
@@ -37,68 +37,66 @@
         <input type="email" id="email" placeholder="Correo electrónico">
         <input type="password" id="password" placeholder="Contraseña">
         
-        <button id="btnLogin" class="btn-primary">Acceder a la plataforma <span>&gt;</span></button>
+        <button id="btnLogin" class="btn-primary">Acceder a la plataforma</button>
         <button id="btnRegisterToggle" class="btn-outline">Registrar nuevo miembro</button>
         <button id="btnForgotPassword" class="btn-text" style="font-size: 13px; margin-top: 5px; width: 100%;">¿Olvidaste tu contraseña?</button>
         
-        <p class="disclaimer">Plataforma privada y segura para competencias de golf.</p>
+        <p class="disclaimer">Plataforma privada de competencias de golf.</p>
         <div id="message"></div>
     </div>
 
-    <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
+    <!-- 2. PANTALLA PRINCIPAL (LOBBY) -->
     <div id="lobby-screen" class="card hidden">
         <div class="header-top">
-            <h2 class="greeting">Hola, <span id="user-name-display">Jugador</span></h2>
-            <button id="btnLogout" class="btn-text-small">Cerrar Sesión</button>
+            <h2 class="greeting">Hola, <span id="user-name-display" style="color:var(--verde-fairway);">Jugador</span></h2>
+            <button id="btnLogout" class="btn-logout">Cerrar Sesión</button>
         </div>
         
         <div class="nav-tabs" id="main-nav-tabs">
-            <button class="tab-btn active" id="tab-torneos">Torneos del Mes</button>
-            <button class="tab-btn" id="tab-apuestas">Mis Apuestas</button>
+            <button class="tab-btn active" id="tab-torneos">Calendario</button>
+            <button class="tab-btn" id="tab-apuestas">Inscripciones</button>
             <button class="tab-btn" id="tab-ranking">Leaderboard</button>
             <button class="tab-btn" id="tab-perfil">Perfil</button>
             <button class="tab-btn" id="tab-reglas">Reglas</button>
             <button class="tab-btn" id="tab-catalogo">Premios</button>
+            <!-- Botón Admin inyectado dinámicamente si es administrador -->
         </div>
 
-        <!-- CONTENIDO A: Torneos del Mes (Calendario Anual / Mensual) -->
+        <!-- CONTENIDO A: Calendario de Torneos del Mes -->
         <div id="content-torneos" class="tab-content">
             <div class="month-selector-bar">
-                <button id="btnMesAnterior" class="btn-outline btn-small">← Mes Anterior</button>
-                <span id="mes-actual-display" style="font-family:'Playfair Display',serif; font-weight:bold; font-size:16px; color:var(--verde-fairway);">Julio 2026</span>
-                <button id="btnMesSiguiente" class="btn-outline btn-small">Mes Siguiente →</button>
+                <button id="btnMesAnterior" class="btn-icon">&#10094;</button>
+                <span id="mes-actual-display" class="month-display">Julio 2026</span>
+                <button id="btnMesSiguiente" class="btn-icon">&#10095;</button>
             </div>
-
-            <button id="btnSyncCalendar" class="btn-outline btn-seed mt-15">🔄 Sincronizar Calendario Anual (ESPN)</button>
             
-            <div class="header-section mt-15">
-                <h2>Agenda del Mes</h2>
-                <p class="subtitle-small">Participa en cada fecha del circuito. Los torneos pasados o finalizados se bloquean automáticamente.</p>
+            <div class="header-section" style="margin-top:10px; margin-bottom: 20px;">
+                <p class="subtitle-small" style="text-align:center; margin: 0;">Participa en el circuito oficial. Los torneos finalizados se bloquean automáticamente.</p>
             </div>
 
             <div id="calendario-mensual-list" class="tickets-container">
-                <!-- Se inyecta dinámicamente la lista de torneos del mes -->
+                <!-- Se inyecta dinámicamente la lista de torneos reales -->
             </div>
         </div>
 
-        <!-- CONTENIDO B: Mis Apuestas -->
+        <!-- CONTENIDO B: Mis Inscripciones -->
         <div id="content-apuestas" class="tab-content hidden">
-            <h2 class="serif-title mt-15">Mis Apuestas</h2>
-            <p class="subtitle-small">Puedes modificar tu cuadro de jugadores hasta 1 hora antes del inicio oficial.</p>
+            <h2 class="serif-title mt-15">Mis Inscripciones</h2>
+            <p class="subtitle-small">Modifica tu selección de jugadores hasta 1 hora antes del inicio oficial de la ronda.</p>
             <div id="mis-apuestas-list" class="tickets-container"></div>
         </div>
 
         <!-- CONTENIDO C: Clasificación -->
         <div id="content-ranking" class="tab-content hidden">
             <h2 class="serif-title mt-15">Leaderboard</h2>
-            <p class="subtitle-small">Puntajes y scores reales calculados en tiempo real.</p>
+            <p class="subtitle-small">Tabla de posiciones y puntajes calculados en vivo.</p>
             <div id="ranking-list" class="ranking-container"></div>
         </div>
 
         <!-- CONTENIDO D: Perfil de Usuario -->
         <div id="content-perfil" class="tab-content hidden">
             <h2 class="serif-title mt-15">Mi Perfil</h2>
-            <p class="subtitle-small">Actualiza tu información personal registrada en la plataforma.</p>
+            <p class="subtitle-small">Actualiza tu información personal registrada en la membresía.</p>
             
             <div class="profile-form">
                 <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Nombre</label>
@@ -110,45 +108,33 @@
                 <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Correo electrónico (No modificable)</label>
                 <input type="email" id="profile-email" disabled style="background: #f3f4f6; cursor: not-allowed;">
                 
-                <button id="btnGuardarPerfil" class="btn-primary mt-15">Guardar Cambios <span>💾</span></button>
+                <button id="btnGuardarPerfil" class="btn-primary mt-15">Guardar Cambios</button>
             </div>
         </div>
 
-        <!-- CONTENIDO E: Reglas del Juego -->
+        <!-- CONTENIDO E: Reglas -->
         <div id="content-reglas" class="tab-content hidden">
             <h2 class="serif-title mt-15">Reglas de la Competencia</h2>
-            <p class="subtitle-small">Todo lo que necesitas saber para participar y destacar en la tabla de posiciones.</p>
-            
-            <div class="rules-container">
+            <div class="rules-container mt-15">
                 <div class="rule-card">
                     <div class="rule-icon">📅</div>
                     <div>
-                        <h4>1. Competencias Mensuales</h4>
-                        <p>La temporada exige pronosticar en cada uno de los torneos programados cada mes para acumular puntos en el ranking general.</p>
+                        <h4>1. Calendario de Circuito</h4>
+                        <p>Inscríbete en cada uno de los torneos oficiales programados en el mes para acumular puntos en el ranking general.</p>
                     </div>
                 </div>
-
                 <div class="rule-card">
                     <div class="rule-icon">💰</div>
                     <div>
-                        <h4>2. Inversión y Multiplicadores</h4>
-                        <p>Tu monto de inscripción define tu factor multiplicador y la cantidad de cupos disponibles en tu selección.</p>
+                        <h4>2. Factor de Multiplicación</h4>
+                        <p>Tu inversión define tu multiplicador de puntos y los cupos disponibles para seleccionar profesionales.</p>
                     </div>
                 </div>
-
-                <div class="rule-card">
-                    <div class="rule-icon">🏌️‍♂️</div>
-                    <div>
-                        <h4>3. Selección Libre de Golfistas</h4>
-                        <p>Libertad absoluta para escoger a los profesionales que prefieras ordenados alfabéticamente.</p>
-                    </div>
-                </div>
-
                 <div class="rule-card">
                     <div class="rule-icon">⏱️</div>
                     <div>
-                        <h4>4. Cierre de Inscripciones</h4>
-                        <p>Los torneos pasados se bloquean de forma automática. Asegúrate de asegurar tu cuadro antes de cada fecha límite.</p>
+                        <h4>3. Cierres de Roster</h4>
+                        <p>Los torneos pasados se bloquean automáticamente. Envía tu selección antes de la hora de inicio oficial (Tee time).</p>
                     </div>
                 </div>
             </div>
@@ -160,40 +146,33 @@
                 <div style="font-size: 12px; text-transform: uppercase; font-weight: 600; opacity: 0.9;">Mis Puntos Acumulados</div>
                 <div style="font-size: 28px; font-weight: bold; margin-top: 5px;" id="user-points">2,450 pts</div>
                 <div class="progress-bar"><div class="progress-fill" style="width: 49%;"></div></div>
-                <div style="font-size: 11px; margin-top: 8px; opacity: 0.8;">Faltan 2,550 pts para tu próxima recompensa</div>
             </div>
-            <h2 class="serif-title mt-15">Premios Disponibles</h2>
-            <p class="subtitle-small">Artículos seleccionados de alta rotación y bajo costo de envío/importación (sin recargos por peso).</p>
+            <h2 class="serif-title mt-15">Premios del Club</h2>
             <div id="catalogo-list" class="catalogo-container"></div>
         </div>
 
-        <!-- CONTENIDO G: Panel de Administración -->
+        <!-- CONTENIDO G: Panel Admin -->
         <div id="content-admin" class="tab-content hidden">
-            <h2 class="serif-title mt-15">Panel de Administración</h2>
-            <p class="subtitle-small">Control financiero, liquidación y gestión de envíos de premios.</p>
+            <h2 class="serif-title mt-15">Panel Directivo</h2>
             
+            <button id="btnSyncCalendar" class="btn-primary" style="background-color: #374151; margin-bottom: 20px;">🔄 Sincronizar Calendario Anual (ESPN)</button>
+
             <div class="admin-stats-grid">
                 <div class="admin-stat-card">
                     <span style="font-size: 11px; color: var(--texto-gris);">Total Recaudado</span>
                     <strong id="admin-recaudo" style="font-size: 18px; color: var(--verde-fairway);">$0 COP</strong>
                 </div>
                 <div class="admin-stat-card">
-                    <span style="font-size: 11px; color: var(--texto-gris);">Margen Utilidad (20%)</span>
+                    <span style="font-size: 11px; color: var(--texto-gris);">Margen (20%)</span>
                     <strong id="admin-utilidad" style="font-size: 18px; color: #10b981;">$0 COP</strong>
                 </div>
                 <div class="admin-stat-card" style="grid-column: span 2;">
-                    <span style="font-size: 11px; color: var(--texto-gris);">Bolsa Neta (Premios + Envíos Amazon)</span>
+                    <span style="font-size: 11px; color: var(--texto-gris);">Bolsa Neta Premios y Logística</span>
                     <strong id="admin-bolsa" style="font-size: 18px; color: #d97706;">$0 COP</strong>
                 </div>
             </div>
-
             <div style="margin-top: 20px;">
-                <h3 style="font-size: 15px; margin-bottom: 10px;">Gestión de Torneo y Liquidación</h3>
-                <button id="btnLiquidarTorneo" class="btn-outline btn-small" style="background:#fffbeb; border-color:#f59e0b; color:#92400e;">🔒 Cerrar y Liquidar Torneo Seleccionado</button>
-            </div>
-
-            <div style="margin-top: 20px;">
-                <h3 style="font-size: 15px; margin-bottom: 10px;">Premios por Entregar (Amazon / Envíos)</h3>
+                <h3 style="font-size: 15px; margin-bottom: 10px;">Gestión de Envíos</h3>
                 <div id="admin-premios-list" class="tickets-container" style="max-height: 220px;"></div>
             </div>
         </div>
@@ -201,9 +180,9 @@
 
     <!-- 3. SELECCIÓN DE MONTO -->
     <div id="seleccion-screen" class="card hidden">
-        <button id="btnVolverLobby" class="btn-text btn-back">← Volver a torneos</button>
-        <h2 class="serif-title">¿Cuánto quieres invertir?</h2>
-        <p class="subtitle-small">Define tu monto para desbloquear cupos de jugadores y multiplicadores.</p>
+        <button id="btnVolverLobby" class="btn-text btn-back">← Volver al Calendario</button>
+        <h2 class="serif-title">¿Cuánto deseas invertir?</h2>
+        <p class="subtitle-small">Define tu monto para estructurar el equipo y establecer tu multiplicador de bolsa.</p>
 
         <div class="slider-container">
             <div class="amount-display" id="amountDisplay">$ 20,000 COP</div>
@@ -213,47 +192,43 @@
                 <span>🚀 <span id="multiplierDisplay">5.0x</span> Multiplicador</span>
             </div>
         </div>
-        <button id="btnSiguientePago" class="btn-primary">Continuar a Selección <span>&gt;</span></button>
+        <button id="btnSiguientePago" class="btn-primary">Continuar a Selección de Roster</button>
     </div>
 
     <!-- 4. SELECCIÓN DE JUGADORES -->
     <div id="roster-screen" class="card hidden">
-        <button id="btnVolverMonto" class="btn-text btn-back">← Volver</button>
+        <button id="btnVolverMonto" class="btn-text btn-back">← Modificar Inversión</button>
         <h2 class="serif-title" id="roster-title">Arma tu selección</h2>
-        <p class="subtitle-small">Selección alfabética. Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
-        
+        <p class="subtitle-small">Jugadores listados alfabéticamente. Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos restantes.</p>
         <div id="player-list" class="player-list"></div>
-
-        <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi inscripción <span>&gt;</span></button>
+        <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi inscripción</button>
     </div>
 
     <!-- 5. CHECKOUT -->
     <div id="checkout-screen" class="card hidden">
-        <button id="btnVolverRoster" class="btn-text btn-back">← Modificar equipo</button>
+        <button id="btnVolverRoster" class="btn-text btn-back">← Ajustar Selección</button>
         <h2 class="serif-title" id="checkout-title">Resumen de Inscripción</h2>
-        <p class="subtitle-small">Revisa tu selección antes de procesar el pago seguro.</p>
-        
         <div class="checkout-ticket">
-            <div class="ticket-row"><span style="color:var(--texto-gris)">Torneo</span> <strong id="chk-torneo">Cargando...</strong></div>
+            <div class="ticket-row"><span style="color:var(--texto-gris)">Competencia</span> <strong id="chk-torneo">...</strong></div>
             <div class="ticket-row"><span style="color:var(--texto-gris)">Inversión</span> <strong id="chk-monto">$0 COP</strong></div>
             <div class="ticket-row"><span style="color:var(--texto-gris)">Multiplicador</span> <strong id="chk-multiplicador">1.0x</strong></div>
             <hr style="border: 0; border-top: 1px dashed var(--borde-suave); margin: 15px 0;">
-            <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px;">Tu Cuadro:</div>
+            <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px;">Jugadores Seleccionados:</div>
             <ul id="chk-equipo" class="equipo-list"></ul>
         </div>
-        <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: #111827;">Pagar con Bold <span>🔒</span></button>
+        <button id="btnPagarBold" class="btn-primary" style="margin-top:20px; background-color: #111827;">Confirmar Selección 🔒</button>
     </div>
 
     <!-- 6. ÉXITO -->
     <div id="success-screen" class="card text-center hidden">
         <div class="logo-circle" style="background-color: #10b981; margin-bottom: 20px;">✓</div>
         <h2 class="serif-title">¡Inscripción Exitosa!</h2>
-        <p class="subtitle-small">Tu cuadro ha quedado registrado oficialmente en el torneo.</p>
+        <p class="subtitle-small">Tu selección ha quedado registrada oficialmente en el torneo.</p>
         <div style="background: #f0fdf4; border: 1px solid #bbf7d0; padding: 15px; border-radius: 8px; margin-bottom: 25px;">
             <span style="display:block; font-size:12px; color:#166534;">Código de Confirmación</span>
-            <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:13px; word-break: break-all;">...</strong>
+            <strong id="success-tx-id" style="color:#166534; font-family:monospace; font-size:13px;">...</strong>
         </div>
-        <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
+        <button id="btnVolverInicio" class="btn-primary">Ver mis inscripciones</button>
     </div>
 
     <script type="module" src="app.js"></script>
