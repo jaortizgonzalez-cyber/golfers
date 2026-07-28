@@ -48,7 +48,7 @@
     <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
     <div id="lobby-screen" class="card hidden">
         
-        <!-- NUEVO ENCABEZADO PREMIUM VERDE -->
+        <!-- ENCABEZADO MINIMALISTA E IMPECABLE -->
         <div class="header-top">
             <div class="user-greeting-box">
                 <span class="welcome-text">Bienvenido,</span>
@@ -57,6 +57,7 @@
             <button id="btnLogout" class="btn-logout-link">Cerrar sesión</button>
         </div>
         
+        <!-- NAVEGACIÓN SCROLL HORIZONTAL -->
         <div class="nav-tabs" id="main-nav-tabs">
             <button class="tab-btn active" id="tab-torneos">Torneos</button>
             <button class="tab-btn" id="tab-apuestas">Mis apuestas</button>
@@ -69,7 +70,7 @@
 
         <!-- CONTENIDO A: Torneos -->
         <div id="content-torneos" class="tab-content">
-            <button id="btnSyncDb" class="btn-outline btn-seed mt-15">🔄 Actualizar Torneo en Vivo</button>
+            <!-- Botón de Sincronizar movido a la pestaña Admin -->
             
             <div class="header-section mt-15">
                 <h2 style="display: flex; align-items: center; gap: 8px;">Torneo en Curso <span class="live-dot"></span></h2>
@@ -176,8 +177,11 @@
         <!-- CONTENIDO G: Panel de Administración -->
         <div id="content-admin" class="tab-content hidden">
             <h2 class="serif-title mt-15">Panel de Administración</h2>
-            <p class="subtitle-small">Control financiero, liquidación y gestión de envíos de premios.</p>
+            <p class="subtitle-small">Control financiero, liquidación y sincronización de bases de datos.</p>
             
+            <!-- Botón de Sincronización reubicado exclusivamente en el Panel Admin -->
+            <button id="btnSyncDb" class="btn-primary" style="background-color: #374151; margin-bottom: 20px;">🔄 Actualizar Torneo en Vivo</button>
+
             <div class="admin-stats-grid">
                 <div class="admin-stat-card">
                     <span style="font-size: 11px; color: var(--texto-gris);">Total Recaudado</span>
