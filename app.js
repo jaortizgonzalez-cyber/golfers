@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/fireba
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
-// ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
     apiKey: "AIzaSyD_FU4S9CYZi2zXka0WAck-DL6r3Sl4XSE",
   authDomain: "golfers-bf5ec.firebaseapp.com",
@@ -165,7 +164,6 @@ document.getElementById('btnGuardarPerfil').addEventListener('click', async () =
 document.getElementById('btnVolverLobby').addEventListener('click', () => showScreen('lobby'));
 document.getElementById('btnVolverMonto').addEventListener('click', () => showScreen('seleccion'));
 document.getElementById('btnVolverRoster').addEventListener('click', () => showScreen('roster'));
-document.getElementById('btnVolverInicio').addEventListener('click', () => { showScreen('lobby'); switchTab('apuestas'); });
 
 const tabs = ['torneos', 'apuestas', 'ranking', 'perfil', 'reglas', 'catalogo', 'admin'];
 tabs.forEach(tab => {
@@ -216,7 +214,7 @@ document.getElementById('btnMesSiguiente').addEventListener('click', () => {
     cargarTorneosMensualesSilencioso();
 });
 
-// Extrae el calendario en tiempo real sin botones molestos ni torneos genéricos
+// Extrae el calendario en tiempo real sin botones molestos
 async function cargarTorneosMensualesSilencioso() {
     document.getElementById('mes-actual-display').textContent = `${nombresMeses[mesVisualizado.mes]} ${mesVisualizado.ano}`;
     const container = document.getElementById('calendario-mensual-list');
@@ -249,8 +247,7 @@ async function cargarTorneosMensualesSilencioso() {
         torneosDelMes.forEach(torneo => {
             const fechaInicio = new Date(torneo.startDate);
             const horaInicioMs = fechaInicio.getTime();
-            // Bloquea 1 hora antes
-            const esPasado = ahora > (horaInicioMs - 3600000);
+            const esPasado = ahora > (horaInicioMs - 3600000); // Bloquea 1 hora antes
 
             const card = document.createElement('div');
             card.className = `tournament-box ${esPasado ? 'closed-tournament' : ''}`;
