@@ -5,12 +5,12 @@ import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp,
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
     apiKey: "AIzaSyD_FU4S9CYZi2zXka0WAck-DL6r3Sl4XSE",
-  authDomain: "golfers-bf5ec.firebaseapp.com",
-  projectId: "golfers-bf5ec",
-  storageBucket: "golfers-bf5ec.firebasestorage.app",
-  messagingSenderId: "1004442521926",
-  appId: "1:1004442521926:web:6563197e04152d2e6f5547",
-  measurementId: "G-8VGWQ63JZW"
+    authDomain: "golfers-bf5ec.firebaseapp.com",
+    projectId: "golfers-bf5ec",
+    storageBucket: "golfers-bf5ec.firebasestorage.app",
+    messagingSenderId: "1004442521926",
+    appId: "1:1004442521926:web:6563197e04152d2e6f5547",
+    measurementId: "G-8VGWQ63JZW"
 };
 
 const app = initializeApp(firebaseConfig);
@@ -282,7 +282,7 @@ slider.addEventListener('input', (e) => {
 });
 
 // --- SINCRONIZACIÓN API ESPNS -> FIRESTORE ---
-document.getElementById('btnSyncDb').addEventListener('click', async () => {
+document.getElementById('btnSyncDb')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnSyncDb');
     btn.textContent = "🔄 Sincronizando en vivo...";
     btn.disabled = true;
@@ -347,7 +347,7 @@ async function cargarTorneoDesdeFirestore() {
             actualizarUIەTorneo();
         } else {
             document.getElementById('torneo-nombre').textContent = "Torneo disponible para sincronizar";
-            document.getElementById('torneo-campo').textContent = "Haz clic en actualizar para cargar datos.";
+            document.getElementById('torneo-campo').textContent = "Aún no se ha cargado la base de datos de ESPN.";
         }
     } catch (e) {
         console.error("Error leyendo Firestore:", e);
@@ -627,7 +627,7 @@ async function cargarPanelAdmin() {
     }
 }
 
-document.getElementById('btnLiquidارTorneo')?.addEventListener('click', async () => {
+document.getElementById('btnLiquidarTorneo')?.addEventListener('click', async () => {
     if (!state.torneoActual) return;
     try {
         const torneoRef = doc(db, "tournaments", state.torneoActual.id);
