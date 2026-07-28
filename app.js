@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
-import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { getFirestore, doc, setDoc, getDoc, updateData, updateDoc, collection, addDoc, serverTimestamp, query, where, getDocs } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
@@ -16,6 +16,8 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+
+let esModoRegistro = false;
 
 const state = {
     torneoActual: null,
@@ -59,11 +61,11 @@ function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     });
 }
 
-// --- AUTENTICACIÓN ---
+// --- AUTENTICACIÓN Y PERFIL ---
 onAuthStateChanged(auth, async (user) => {
     if (user) {
         showScreen('lobby');
-        document.getElementById('user-email-display').textContent = user.email.split('@')[0];
+        await cargarDatosPerfil(user);
         await cargarTorneoDesdeFirestore(); 
         cargarCatalogo(); 
     } else {
@@ -71,23 +73,132 @@ onAuthStateChanged(auth, async (user) => {
     }
 });
 
-document.getElementById('btnRegister').addEventListener('click', async () => {
-    try { 
-        await createUserWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); 
-    } catch (e) { 
-        mostrarModal("Atención", e.message, "⚠️");
+// Alternar entre Login y Registro
+document.getElementById('btnRegisterToggle').addEventListener('click', () => {
+    esModoRegistro = !esModoRegistro;
+    const regFields = document.getElementById('register-fields');
+    const title = document.getElementById('auth-title');
+    const sub = document.getElementById('auth-subtitle');
+    const btnLogin = document.getElementById('btnLogin');
+    const btnRegToggle = document.getElementById('btnRegisterToggle');
+    const btnForgot = document.getElementById('btnForgotPassword');
+
+    if (esModoRegistro) {
+        regFields.classList.remove('hidden');
+        title.textContent = "Nuevo Miembro";
+        sub.textContent = "Regístrate con tus datos personales";
+        btnLogin.textContent = "Crear Cuenta";
+        btnRegToggle.textContent = "← Ya tengo cuenta";
+        btnForgot.classList.add('hidden');
+    } else {
+        regFields.classList.add('hidden');
+        title.textContent = "Copa Fairway";
+        sub.textContent = "Quinielas privadas de golf — acceso exclusivo";
+        btnLogin.textContent = "Entrar al grupo";
+        btnRegToggle.textContent = "Crear cuenta nueva";
+        btnForgot.classList.remove('hidden');
     }
 });
 
+// Botón de Acción Principal (Login / Registro)
 document.getElementById('btnLogin').addEventListener('click', async () => {
-    try { 
-        await signInWithEmailAndPassword(auth, document.getElementById('email').value, document.getElementById('password').value); 
-    } catch (e) { 
-        mostrarModal("Credenciales Incorrectas", "Verifica tu correo y contraseña e intenta nuevamente.", "🔒");
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!email || !password) {
+        mostrarModal("Campos Incompletos", "Por favor ingresa tu correo y contraseña.", "⚠️");
+        return;
+    }
+
+    try {
+        if (esModoRegistro) {
+            const nombre = document.getElementById('reg-nombre').value.trim();
+            const apellido = document.getElementById('reg-apellido').value.trim();
+
+            if (!nombre || !apellido) {
+                mostrarModal("Datos Personales", "Debes ingresar tu nombre y apellidos completos.", "⚠️");
+                return;
+            }
+
+            const cred = await createUserWithEmailAndPassword(auth, email, password);
+            // Guardar perfil inicial en Firestore de forma segura
+            await setDoc(doc(db, "users", cred.user.uid), {
+                nombre: nombre,
+                apellido: apellido,
+                email: email,
+                created_at: serverTimestamp()
+            });
+            mostrarModal("¡Bienvenido!", "Tu cuenta ha sido creada exitosamente.", "⛳");
+        } else {
+            await signInWithEmailAndPassword(auth, email, password);
+        }
+    } catch (e) {
+        mostrarModal("Error de Autenticación", e.message, "❌");
+    }
+});
+
+// Recuperar Contraseña
+document.getElementById('btnForgotPassword').addEventListener('click', async () => {
+    const email = document.getElementById('email').value.trim();
+    if (!email) {
+        mostrarModal("Correo Requerido", "Ingresa tu correo electrónico en el campo superior para recuperar tu contraseña.", "🔒");
+        return;
+    }
+    try {
+        await sendPasswordResetEmail(auth, email);
+        mostrarModal("Correo Enviado", "Hemos enviado las instrucciones para restablecer tu contraseña a tu correo.", "✉️");
+    } catch (e) {
+        mostrarModal("Error", "No se pudo procesar la recuperación de contraseña.", "❌");
     }
 });
 
 document.getElementById('btnLogout').addEventListener('click', () => signOut(auth));
+
+// Cargar y gestionar Perfil
+async function cargarDatosPerfil(user) {
+    try {
+        const docRef = doc(db, "users", user.uid);
+        const docSnap = await getDoc(docRef);
+        
+        let nombreCompleto = user.email.split('@')[0];
+        if (docSnap.exists()) {
+            const data = docSnap.data();
+            nombreCompleto = `${data.nombre || ''} ${data.apellido || ''}`.trim() || nombreCompleto;
+            document.getElementById('profile-nombre').value = data.nombre || '';
+            document.getElementById('profile-apellido').value = data.apellido || '';
+        }
+        document.getElementById('user-name-display').textContent = nombreCompleto;
+        document.getElementById('profile-email').value = user.email;
+    } catch (e) {
+        console.error("Error cargando perfil", e);
+    }
+}
+
+document.getElementById('btnGuardarPerfil').addEventListener('click', async () => {
+    const user = auth.currentUser;
+    if (!user) return;
+
+    const nombre = document.getElementById('profile-nombre').value.trim();
+    const apellido = document.getElementById('profile-apellido').value.trim();
+
+    if (!nombre || !apellido) {
+        mostrarModal("Campos Obligatorios", "El nombre y los apellidos no pueden estar vacíos.", "⚠️");
+        return;
+    }
+
+    try {
+        const userRef = doc(db, "users", user.uid);
+        await updateDoc(userRef, {
+            nombre: nombre,
+            apellido: apellido,
+            updated_at: serverTimestamp()
+        });
+        document.getElementById('user-name-display').textContent = `${nombre} ${apellido}`;
+        mostrarModal("Perfil Actualizado", "Tus datos personales han sido guardados correctamente.", "✨");
+    } catch (e) {
+        mostrarModal("Error", "No se pudo actualizar el perfil.", "❌");
+    }
+});
 
 // --- NAVEGACIÓN Y TABS ---
 document.getElementById('btnIrSeleccion').addEventListener('click', () => {
@@ -101,7 +212,7 @@ document.getElementById('btnVolverInicio').addEventListener('click', () => {
     showScreen('lobby'); switchTab('apuestas'); 
 });
 
-const tabs = ['torneos', 'apuestas', 'ranking', 'catalogo'];
+const tabs = ['torneos', 'apuestas', 'ranking', 'perfil', 'reglas', 'catalogo'];
 tabs.forEach(tab => {
     document.getElementById(`tab-${tab}`).addEventListener('click', () => switchTab(tab));
 });
@@ -306,7 +417,7 @@ async function iniciarEdicionTicket(ticketId) {
     }
 }
 
-// --- LEADERBOARD CON PUNTAJE REAL DE ESPN ---
+// --- LEADERBOARD CON NOMBRES REALES Y PUNTAJE DE ESPN ---
 async function cargarRanking() {
     const container = document.getElementById('ranking-list');
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
@@ -316,6 +427,14 @@ async function cargarRanking() {
             container.innerHTML = `<div class="empty-state">Actualiza el torneo primero.</div>`;
             return;
         }
+
+        // Cargar nombres reales desde la colección "users"
+        const usersSnap = await getDocs(collection(db, "users"));
+        let usersMap = {};
+        usersSnap.forEach(uDoc => {
+            const uData = uDoc.data();
+            usersMap[uDoc.id] = `${uData.nombre || ''} ${uData.apellido || ''}`.trim() || uDoc.id;
+        });
 
         let playerScoresMap = {};
         if (state.torneoActual.players) {
@@ -345,11 +464,11 @@ async function cargarRanking() {
 
             let totalPoints = Math.max(10, basePoints * bet.multiplier); 
             let userId = bet.user_id;
-            let userName = bet.user_email.split('@')[0];
+            let nombreUsuario = usersMap[userId] || bet.user_email.split('@')[0];
 
             if (!usuariosMap[userId] || totalPoints > usuariosMap[userId].points) {
                 usuariosMap[userId] = {
-                    user: userName,
+                    user: nombreUsuario,
                     team: bet.roster.map(p => p.name).join(', '),
                     points: totalPoints,
                     multiplier: bet.multiplier
