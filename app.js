@@ -282,7 +282,7 @@ slider.addEventListener('input', (e) => {
 });
 
 // --- SINCRONIZACIÓN API ESPNS -> FIRESTORE ---
-document.getElementById('btnSyncDb')?.addEventListener('click', async () => {
+document.getElementById('btnSyncDb').addEventListener('click', async () => {
     const btn = document.getElementById('btnSyncDb');
     btn.textContent = "🔄 Sincronizando en vivo...";
     btn.disabled = true;
@@ -347,7 +347,7 @@ async function cargarTorneoDesdeFirestore() {
             actualizarUIەTorneo();
         } else {
             document.getElementById('torneo-nombre').textContent = "Torneo disponible para sincronizar";
-            document.getElementById('torneo-campo').textContent = "Aún no se ha cargado la base de datos de ESPN.";
+            document.getElementById('torneo-campo').textContent = "Haz clic en actualizar para cargar datos.";
         }
     } catch (e) {
         console.error("Error leyendo Firestore:", e);
