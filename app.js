@@ -555,27 +555,28 @@ async function cargarTorneoDesdeFirestore() {
     try {
         const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
         const data = await response.json();
-        const eventId = data.events[0].id;
+        const event = data.events[0];
+        const eventId = event.id;
 
         const docRef = doc(db, "tournaments", eventId);
         const docSnap = await getDoc(docRef);
 
-        // 🔧 AUTO-REPARACIÓN: si el documento guardado en Firestore es de una sincronización
-        // ANTERIOR a este arreglo, no tendrá el campo 'rango_fechas' (aunque sí pudo haber
-        // quedado con 'startDate'/'detalle_estado' viejos). En vez de mostrar datos obsoletos
-        // hasta que alguien presione manualmente "Sincronizar", lo detectamos aquí y volvemos a
-        // traer/guardar los datos frescos de ESPN automáticamente, una sola vez, de forma silenciosa.
-        if (docSnap.exists() && !docSnap.data().rango_fechas) {
-            console.warn("Documento de torneo desactualizado (sin rango_fechas) — resincronizando con ESPN...");
-            const torneoFresco = await fetchTorneoDesdeESPN();
-            await setDoc(docRef, torneoFresco);
-            state.torneoActual = torneoFresco;
-            actualizarUIەTorneo();
-            return;
-        }
-
         if (docSnap.exists()) {
             state.torneoActual = docSnap.data();
+
+            // 🔧 COMPATIBILIDAD: si el documento en Firestore es de una sincronización ANTERIOR
+            // a este arreglo, no tendrá el campo 'rango_fechas'. Las reglas de seguridad de
+            // Firestore (match /tournaments/{id} → allow write: if isAdmin()) NO permiten que un
+            // usuario normal escriba/corrija ese documento — solo el admin puede hacerlo (con el
+            // botón "Sincronizar"). Por eso aquí NUNCA se hace setDoc/write; simplemente se
+            // calcula 'rango_fechas' EN MEMORIA (usando el mismo JSON de ESPN ya obtenido arriba)
+            // para que la interfaz se vea correcta también para usuarios no-admin, sin necesidad
+            // de permisos de escritura ni de tocar la base de datos.
+            if (!state.torneoActual.rango_fechas) {
+                const compStatus = event.competitions && event.competitions[0] && event.competitions[0].status;
+                state.torneoActual.rango_fechas = (compStatus && compStatus.type && (compStatus.type.detail || compStatus.type.shortDetail)) || null;
+            }
+
             actualizarUIەTorneo();
         } else {
             document.getElementById('torneo-nombre').textContent = "Torneo disponible para sincronizar";
