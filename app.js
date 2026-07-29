@@ -64,6 +64,42 @@ function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     });
 }
 
+// --- CONFIRMACIÓN WOW (reemplaza el confirm() nativo del navegador) ---
+// Reutiliza el mismo modal-card/overlay de mostrarModal(), agregando el botón "Cancelar"
+// (oculto por defecto) para que las confirmaciones de acciones destructivas (eliminar, etc.)
+// tengan la misma estética "WOW" del resto de la app, en vez del feo alert/confirm del navegador.
+function mostrarConfirmacion(titulo, mensaje, onConfirm, icono = "⚠️") {
+    const modal = document.getElementById('custom-modal');
+    document.getElementById('modal-title').textContent = titulo;
+    document.getElementById('modal-message').textContent = mensaje;
+    document.getElementById('modal-icon').textContent = icono;
+
+    modal.classList.remove('hidden');
+
+    const btnAction = document.getElementById('modal-btn-action');
+    const nuevoBtnAction = btnAction.cloneNode(true);
+    nuevoBtnAction.textContent = "Sí, eliminar";
+    nuevoBtnAction.classList.add('btn-danger');
+    btnAction.parentNode.replaceChild(nuevoBtnAction, btnAction);
+
+    const btnCancel = document.getElementById('modal-btn-cancel');
+    const nuevoBtnCancel = btnCancel.cloneNode(true);
+    nuevoBtnCancel.classList.remove('hidden');
+    btnCancel.parentNode.replaceChild(nuevoBtnCancel, btnCancel);
+
+    nuevoBtnAction.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        nuevoBtnAction.classList.remove('btn-danger');
+        if (onConfirm) onConfirm();
+    });
+
+    nuevoBtnCancel.addEventListener('click', () => {
+        modal.classList.add('hidden');
+        nuevoBtnAction.classList.remove('btn-danger');
+        nuevoBtnCancel.classList.add('hidden');
+    });
+}
+
 // --- MENÚ HAMBURGUESA (móvil) ---
 const hamburgerBtn = document.getElementById('btnHamburger');
 const navTabsEl = document.getElementById('main-nav-tabs');
@@ -704,9 +740,13 @@ async function cargarMisApuestas(userId) {
             // en ese caso el usuario debe contactar al admin para gestionar el reembolso/baja.
             // ⚠️ IMPORTANTE: esto requiere que las reglas de Firestore permitan al dueño de la
             // apuesta borrar su propio documento mientras esté PENDIENTE (ver nota de reglas).
+            // 🔧 FIX LAYOUT: el botón ya NO lleva margin-left inline (chocaba con el width:100%
+            // global de <button>, causando que se viera corrido/desbordado). Ahora ambos botones
+            // van dentro de un contenedor flex (.ticket-card-actions-row) que los reparte en fila
+            // con flex:1 cada uno, de forma pareja y sin desbordes.
             const puedeEliminar = sePuedeModificar && bet.payment_status !== "APPROVED";
             let botonEliminarHtml = puedeEliminar
-                ? `<button class="btn-outline btn-small btn-eliminar-apuesta" data-id="${betId}" style="color:var(--rojo-alerta); border-color:var(--rojo-alerta); margin-left:8px;">🗑️ Eliminar</button>`
+                ? `<button class="btn-outline btn-small btn-danger-outline btn-eliminar-apuesta" data-id="${betId}">🗑️ Eliminar</button>`
                 : '';
 
             const estadoPago = bet.payment_status === "APPROVED" ? "aprobado" : "pendiente";
@@ -731,7 +771,7 @@ async function cargarMisApuestas(userId) {
                     ${estadoPuntosHtml}
                     <p style="margin:0 0 4px 0;"><strong>Multiplicador:</strong> ${bet.multiplier}x</p>
                     <p style="margin:0 0 10px 0;"><strong>Equipo:</strong> ${jugadoresNombres}</p>
-                    ${botonEditarHtml}${botonEliminarHtml}
+                    <div class="ticket-card-actions-row">${botonEditarHtml}${botonEliminarHtml}</div>
                 </div>
             `;
             container.appendChild(card);
@@ -747,22 +787,29 @@ async function cargarMisApuestas(userId) {
         // permitan "allow delete" al dueño de la apuesta mientras payment_status == "PENDIENTE"
         // (ver nota de reglas más abajo) — de lo contrario Firestore rechazará el borrado con
         // "Missing or insufficient permissions", igual que ocurrió antes con /tournaments.
+        // 🔧 FIX: se reemplazó el confirm() nativo del navegador (feo, genérico) por el modal
+        // "WOW" propio de la app (mostrarConfirmacion), consistente con el resto de la interfaz.
         document.querySelectorAll('.btn-eliminar-apuesta').forEach(btn => {
-            btn.addEventListener('click', async (e) => {
+            btn.addEventListener('click', (e) => {
                 const betId = e.target.dataset.id;
-                if (!confirm("¿Seguro que deseas eliminar esta apuesta? Esta acción no se puede deshacer.")) return;
-
-                btn.disabled = true;
-                btn.textContent = "Eliminando...";
-                try {
-                    await deleteDoc(doc(db, "bets", betId));
-                    mostrarModal("Apuesta Eliminada", "Tu apuesta fue eliminada correctamente. Ya no participas con este equipo.", "🗑️", () => cargarMisApuestas(userId));
-                } catch (error) {
-                    console.error("Error eliminando apuesta:", error);
-                    mostrarModal("Error al Eliminar", "No se pudo eliminar la apuesta. Es posible que las reglas de Firestore aún no permitan esta acción para tu usuario — contacta al administrador.", "⚠️");
-                    btn.disabled = false;
-                    btn.textContent = "🗑️ Eliminar";
-                }
+                mostrarConfirmacion(
+                    "¿Eliminar esta apuesta?",
+                    "Esta acción no se puede deshacer. Dejarás de participar con este equipo en el torneo.",
+                    async () => {
+                        btn.disabled = true;
+                        btn.textContent = "Eliminando...";
+                        try {
+                            await deleteDoc(doc(db, "bets", betId));
+                            mostrarModal("Apuesta Eliminada", "Tu apuesta fue eliminada correctamente. Ya no participas con este equipo.", "🗑️", () => cargarMisApuestas(userId));
+                        } catch (error) {
+                            console.error("Error eliminando apuesta:", error);
+                            mostrarModal("Error al Eliminar", "No se pudo eliminar la apuesta. Es posible que las reglas de Firestore aún no permitan esta acción para tu usuario — contacta al administrador.", "⚠️");
+                            btn.disabled = false;
+                            btn.textContent = "🗑️ Eliminar";
+                        }
+                    },
+                    "🗑️"
+                );
             });
         });
 
