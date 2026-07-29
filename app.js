@@ -1167,16 +1167,20 @@ document.getElementById('premio-precio')?.addEventListener('input', actualizarPu
 
 // Comprime y convierte la foto a una imagen pequeña en base64 (texto), para poder guardarla
 // directo en Firestore sin necesitar Firebase Storage (que ahora exige plan de pago Blaze).
-function comprimirImagenAFoto(file, maxAncho = 900, calidad = 0.75) {
+function comprimirImagenAFoto(file, maxLado = 800, calidad = 0.72) {
     return new Promise((resolve, reject) => {
         const lector = new FileReader();
         lector.onload = (e) => {
             const img = new Image();
             img.onload = () => {
                 let { width, height } = img;
-                if (width > maxAncho) {
-                    height = Math.round(height * (maxAncho / width));
-                    width = maxAncho;
+                // Se limita por el lado MÁS LARGO (sirve igual para fotos horizontales
+                // que verticales/de celular en modo retrato) — antes solo miraba el ancho.
+                const ladoMayor = Math.max(width, height);
+                if (ladoMayor > maxLado) {
+                    const factor = maxLado / ladoMayor;
+                    width = Math.round(width * factor);
+                    height = Math.round(height * factor);
                 }
                 const canvas = document.createElement('canvas');
                 canvas.width = width;
@@ -1192,11 +1196,14 @@ function comprimirImagenAFoto(file, maxAncho = 900, calidad = 0.75) {
     });
 }
 
+let procesandoImagenPremio = false;
+
 document.getElementById('premio-imagen-file')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const statusEl = document.getElementById('premio-imagen-status');
-    if (statusEl) statusEl.textContent = "Procesando foto...";
+    procesandoImagenPremio = true;
+    if (statusEl) statusEl.textContent = "⏳ Procesando foto, espera un momento...";
     try {
         const dataUrl = await comprimirImagenAFoto(file);
         // Chequeo de tamaño: Firestore permite máximo ~1MB por documento completo.
@@ -1207,16 +1214,23 @@ document.getElementById('premio-imagen-file')?.addEventListener('change', async 
         }
         imagenSubidaUrl = dataUrl;
         actualizarPreviewImagenPremio(dataUrl);
-        if (statusEl) statusEl.textContent = `✅ Foto lista (${pesoKB}KB) — se guarda directo en la base de datos, sin costo ni plan pago.`;
+        if (statusEl) statusEl.textContent = `✅ Foto lista (${pesoKB}KB) — ya puedes guardar el premio.`;
     } catch (err) {
         console.error("Error procesando imagen:", err);
         if (statusEl) statusEl.textContent = "❌ No se pudo procesar la foto.";
+    } finally {
+        procesandoImagenPremio = false;
     }
 });
 
 document.getElementById('btnCancelarEdicionPremio')?.addEventListener('click', limpiarFormularioPremio);
 
 document.getElementById('btnGuardarPremio')?.addEventListener('click', async () => {
+    if (procesandoImagenPremio) {
+        mostrarModal("Espera un momento", "La foto todavía se está procesando. Espera a que aparezca el mensaje '✅ Foto lista' y vuelve a darle a Guardar.", "⏳");
+        return;
+    }
+
     const nombre = document.getElementById('premio-nombre').value.trim();
     const precio = Number(document.getElementById('premio-precio').value);
     const tier = document.getElementById('premio-tier').value;
