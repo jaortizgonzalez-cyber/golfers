@@ -316,23 +316,35 @@ async function fetchTorneoDesdeESPN() {
     const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
     const data = await response.json();
     const event = data.events[0];
-    const compStatus = event.competitions && event.competitions[0] && event.competitions[0].status;
+    const competition = event.competitions && event.competitions[0];
+    const compStatus = competition && competition.status;
+
+    // ⚡ OPTIMIZADO: las fechas/horarios OFICIALES del torneo vienen en el tramo EXCLUSIVO del
+    // JSON dedicado a la competencia (event.competitions[0].status.type), ya formateados por ESPN
+    // (ej: detail:"July 30 - August 2", shortDetail:"7/30 - 8/2"). NO hace falta recorrer el
+    // arreglo de jugadores (competitors[].status.teeTime es información POR JUGADOR, no la fecha
+    // oficial del torneo) — eso era innecesario y estaba mal optimizado.
+    const rangoFechasTorneo = (compStatus && compStatus.type && (compStatus.type.detail || compStatus.type.shortDetail)) || null;
 
     const torneoData = {
         id: event.id,
         name: event.shortName || event.name,
         course: event.courses ? event.courses[0].name : "PGA Tour Course",
+        // Marcador de fecha (día) del torneo, tal como lo entrega ESPN a nivel de competencia.
         startDate: event.date,
+        // Texto oficial del rango de fechas del torneo, ya formateado por ESPN — no requiere
+        // conversión manual de horas ni loops. Ej: "July 30 - August 2".
+        rango_fechas: rangoFechasTorneo,
         status: "ACTIVE",
         // Estado REAL del torneo según ESPN: 'pre' (no ha empezado), 'in' (en vivo), 'post' (terminó).
         // Esto es lo que usamos para decidir si mostramos el punto verde de "en vivo" o no.
         estado_vivo: (compStatus && compStatus.type && compStatus.type.state) || 'pre',
-        detalle_estado: (compStatus && compStatus.type && (compStatus.type.detail || compStatus.type.shortDetail)) || null,
+        detalle_estado: rangoFechasTorneo,
         updated_at: serverTimestamp(),
         players: []
     };
 
-    const competitors = event.competitions[0].competitors;
+    const competitors = competition.competitors;
     competitors.forEach((comp) => {
         let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : null;
 
@@ -567,10 +579,21 @@ function actualizarUIەTorneo() {
     document.getElementById('chk-torneo').textContent = state.torneoActual.name;
     
     let torneoCerrado = state.torneoActual.status === "CLOSED";
+
+    // ⚡ OPTIMIZADO: usamos directamente el texto oficial del rango de fechas que ESPN ya trae
+    // listo en el tramo del torneo/competencia ('rango_fechas', ej: "July 30 - August 2"). Nada
+    // de convertir 'event.date' a hora local (ese campo es solo un marcador de día, no una hora
+    // real, y por eso antes se veían horarios absurdos como "11:00 PM").
+    if (state.torneoActual.rango_fechas) {
+        document.getElementById('torneo-inicio').textContent = "📅 Fechas oficiales: " + state.torneoActual.rango_fechas;
+    } else if (state.torneoActual.startDate) {
+        // Respaldo por si ESPN no trajo el texto oficial: mostramos solo el DÍA (sin hora).
+        const fechaSoloDia = new Date(state.torneoActual.startDate);
+        document.getElementById('torneo-inicio').textContent = "📅 Inicia: " + fechaSoloDia.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+    }
+
     if (state.torneoActual.startDate) {
         const fechaInicio = new Date(state.torneoActual.startDate);
-        document.getElementById('torneo-inicio').textContent = "⏱️ Inicia: " + fechaInicio.toLocaleString();
-        
         if (new Date().getTime() >= fechaInicio.getTime() || torneoCerrado) {
             torneoCerrado = true;
         }
