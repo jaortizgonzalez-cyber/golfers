@@ -93,7 +93,7 @@ onAuthStateChanged(auth, async (user) => {
         await cargarDatosPerfil(user);
         verificarPermisosAdmin(user.email);
         await cargarTorneoDesdeFirestore(); 
-        cargarPremios(); 
+        cargarPremios(user.uid); 
     } else {
         showScreen('login');
     }
@@ -282,6 +282,7 @@ function switchTab(activeTab) {
 
     if (activeTab === 'apuestas' && auth.currentUser) cargarMisApuestas(auth.currentUser.uid);
     if (activeTab === 'ranking') cargarRanking();
+    if (activeTab === 'catalogo' && auth.currentUser) cargarPremios(auth.currentUser.uid);
     if (activeTab === 'admin' && auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) cargarPanelAdmin();
 }
 
@@ -731,17 +732,97 @@ document.getElementById('btnLiquidarTorneo')?.addEventListener('click', async ()
     }
 });
 
-// --- CARGAR PREMIOS ---
-function cargarPremios() {
-    const catalogo = [
-        { id: 'r1', nombre: 'Guante de Golf Sintético (Bajo peso/Envío económico)', puntos: 2000, icono: '🧤' },
-        { id: 'r2', nombre: 'Docena Pelotas (Callaway - Stock Amazon)', puntos: 5000, icono: '⛳' },
-        { id: 'r3', nombre: 'Wedge Liviano Especializado', puntos: 15000, icono: '🏌️' }
-    ];
+// --- CALCULAR PUNTOS REALES DEL USUARIO (solo apuestas con pago confirmado) ---
+async function calcularMisPuntos(userId) {
+    const q = query(collection(db, "bets"), where("user_id", "==", userId), where("payment_status", "==", "APPROVED"));
+    const snap = await getDocs(q);
+    if (snap.empty) return 0;
+
+    const bets = [];
+    const tournamentIds = new Set();
+    snap.forEach(d => { bets.push(d.data()); tournamentIds.add(d.data().tournament_id); });
+
+    const tournamentScoreMaps = {};
+    for (const tId of tournamentIds) {
+        if (!tId) continue;
+        try {
+            const tSnap = await getDoc(doc(db, "tournaments", tId));
+            if (!tSnap.exists()) continue;
+            const tData = tSnap.data();
+            const map = {};
+            (tData.players || []).forEach(p => {
+                let s = String(p.score || "E").trim().toUpperCase();
+                let val = 0;
+                if (s === "E" || s === "EVEN" || s === "-" || s === "") val = 0;
+                else if (s.startsWith("+")) val = -(parseInt(s.replace(/\D/g, "")) || 0) * 5;
+                else if (s.startsWith("-")) val = (parseInt(s.replace(/\D/g, "")) || 0) * 10;
+                else { let parsed = parseInt(s); val = isNaN(parsed) ? 0 : parsed; }
+                map[p.id] = val;
+            });
+            tournamentScoreMaps[tId] = map;
+        } catch (e) {
+            console.error("Error leyendo torneo para puntos:", tId, e);
+        }
+    }
+
+    let total = 0;
+    bets.forEach(bet => {
+        const map = tournamentScoreMaps[bet.tournament_id] || {};
+        let basePoints = 0;
+        (bet.roster || []).forEach(player => {
+            let v = Number(map[player.id]);
+            if (isNaN(v)) v = 0;
+            basePoints += v;
+        });
+        let pts = Math.max(10, basePoints * (bet.multiplier || 1));
+        if (isNaN(pts)) pts = 10;
+        total += pts;
+    });
+    return Math.round(total);
+}
+
+// --- CARGAR PREMIOS (con puntos reales calculados desde Firestore) ---
+const CATALOGO_PREMIOS = [
+    { id: 'r1', nombre: 'Guante de Golf Sintético (Bajo peso/Envío económico)', puntos: 2000, icono: '🧤' },
+    { id: 'r2', nombre: 'Docena Pelotas (Callaway - Stock Amazon)', puntos: 5000, icono: '⛳' },
+    { id: 'r3', nombre: 'Wedge Liviano Especializado', puntos: 15000, icono: '🏌️' }
+];
+
+async function cargarPremios(userId) {
+    const puntosEl = document.getElementById('user-points');
+    const fillEl = document.querySelector('#content-catalogo .progress-fill');
+    const restanteEl = document.getElementById('user-points-remaining');
+
+    if (puntosEl) puntosEl.textContent = 'Calculando...';
+    if (restanteEl) restanteEl.textContent = 'Calculando...';
+
+    let totalPuntos = 0;
+    if (userId) {
+        try {
+            totalPuntos = await calcularMisPuntos(userId);
+        } catch (e) {
+            console.error("Error calculando puntos:", e);
+        }
+    }
+
+    if (puntosEl) puntosEl.textContent = totalPuntos.toLocaleString('es-CO') + " pts";
+
+    const maxUmbral = CATALOGO_PREMIOS[CATALOGO_PREMIOS.length - 1].puntos;
+    const pct = Math.min(100, Math.round((totalPuntos / maxUmbral) * 100));
+    if (fillEl) fillEl.style.width = pct + "%";
+
+    const siguiente = CATALOGO_PREMIOS.find(p => totalPuntos < p.puntos);
+    if (restanteEl) {
+        restanteEl.textContent = siguiente
+            ? `Faltan ${(siguiente.puntos - totalPuntos).toLocaleString('es-CO')} pts para tu próxima recompensa`
+            : "¡Ya alcanzaste todos los premios disponibles!";
+    }
+
     const container = document.getElementById('catalogo-list');
     container.innerHTML = '';
-    
-    catalogo.forEach(item => {
+
+    CATALOGO_PREMIOS.forEach(item => {
+        const alcanzado = totalPuntos >= item.puntos;
         const div = document.createElement('div');
         div.className = 'reward-card';
         div.innerHTML = `
@@ -750,11 +831,14 @@ function cargarPremios() {
                 <div class="reward-name">${item.nombre}</div>
                 <div class="reward-pts">${item.puntos.toLocaleString('es-CO')} pts</div>
             </div>
-            <button class="btn-outline btn-small btn-redimir">Redimir</button>
+            <button class="btn-outline btn-small btn-redimir" ${alcanzado ? '' : 'disabled'}>
+                ${alcanzado ? 'Reclamar' : `Faltan ${(item.puntos - totalPuntos).toLocaleString('es-CO')} pts`}
+            </button>
         `;
-        
+
         div.querySelector('.btn-redimir').addEventListener('click', () => {
-            mostrarModal("Premios", "Los premios de bajo peso de envío se despachan automáticamente con la bolsa neta recaudada.", "🎁");
+            if (!alcanzado) return;
+            mostrarModal("Premios", "¡Alcanzaste este premio! Un administrador coordinará contigo la entrega.", "🎁");
         });
 
         container.appendChild(div);
