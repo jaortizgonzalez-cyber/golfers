@@ -56,7 +56,14 @@ function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     
     const btn = document.getElementById('modal-btn-action');
     const nuevoBtn = btn.cloneNode(true);
+    // 🔧 FIX: siempre resetear a estado "simple" (un solo botón, texto por defecto)
+    nuevoBtn.textContent = "Entendido";
+    nuevoBtn.classList.remove('btn-danger');
     btn.parentNode.replaceChild(nuevoBtn, btn);
+
+    // 🔧 FIX: siempre ocultar "Cancelar" al usar el modal simple de aviso
+    const btnCancel = document.getElementById('modal-btn-cancel');
+    btnCancel.classList.add('hidden');
     
     nuevoBtn.addEventListener('click', () => {
         modal.classList.add('hidden');
