@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260730">
+    <link rel="stylesheet" href="style.css?v=20260802">
 </head>
 <body>
 
@@ -88,8 +88,8 @@
             <div id="calendario-torneos-list" style="margin-bottom: 22px;"></div>
 
             <div class="header-section mt-15">
-                <h2 style="display: flex; align-items: center; gap: 8px;">Torneo en Curso <span class="live-dot"></span></h2>
-                <p class="subtitle-small">Selecciona tu inversión, arma tu equipo y compite por la gloria.</p>
+                <h2 style="display: flex; align-items: center; gap: 8px;">Torneo Activo <span id="torneo-live-dot" class="pending-dot"></span></h2>
+                <p class="subtitle-small" id="torneo-live-label">Cargando estado...</p>
             </div>
 
             <div class="tournament-box" id="tournament-card-box">
@@ -331,8 +331,8 @@
                     <input type="text" id="premio-nombre" placeholder="Ej: Guante de Golf FootJoy WeatherSof">
 
                     <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Precio real de mercado (COP)</label>
-                    <input type="number" id="premio-precio" placeholder="Ej: 89000">
-                    <p id="premio-puntos-preview" style="font-size: 12px; color: var(--dorado); font-weight: 700; margin: -8px 0 12px;"></p>
+                    <input type="number" id="premio-precio" placeholder="Ej: 89000" style="margin-bottom: 6px;">
+                    <p id="premio-puntos-preview" style="font-size: 12px; color: var(--dorado); font-weight: 700; margin: 0 0 14px; min-height: 16px;"></p>
 
                     <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Nivel</label>
                     <select id="premio-tier" style="width:100%; padding:13px 14px; margin-bottom:14px; border:1px solid var(--borde-suave); border-radius:8px; font-size:14.5px; font-family:'Inter',sans-serif; background:var(--blanco); color:var(--texto-oscuro);">
@@ -340,9 +340,6 @@
                         <option value="plata">Plata</option>
                         <option value="oro">Oro</option>
                     </select>
-
-                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Ícono de respaldo (emoji, se usa si la foto no carga)</label>
-                    <input type="text" id="premio-icono" placeholder="🧤" maxlength="4">
 
                     <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Foto real del producto</label>
                     <input type="file" id="premio-imagen-file" accept="image/*">
@@ -382,7 +379,17 @@
     <div id="roster-screen" class="card hidden">
         <button id="btnVolverMonto" class="btn-text btn-back">← Volver</button>
         <h2 class="serif-title" id="roster-title">Arma tu equipo</h2>
-        <p class="subtitle-small">Selección alfabética. Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
+        <p class="subtitle-small">Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
+
+        <div id="roster-chips-box" class="roster-chips-box hidden">
+            <div class="roster-chips-label">Tu equipo (toca la × para quitar)</div>
+            <div id="roster-chips-list" class="roster-chips-list"></div>
+        </div>
+
+        <div class="player-search-box">
+            <span class="player-search-icon">🔍</span>
+            <input type="text" id="player-search-input" placeholder="Buscar jugador por nombre...">
+        </div>
 
         <div id="player-list" class="player-list"></div>
 
@@ -426,6 +433,6 @@
         <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
     </div>
 
-    <script type="module" src="app.js?v=20260731b"></script>
+    <script type="module" src="app.js?v=20260802"></script>
 </body>
 </html>
