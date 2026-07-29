@@ -59,8 +59,9 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes scaleUp { from { transform: scale(0.96); } to { transform: scale(1); } }
 
-.live-dot { height: 8px; width: 8px; background-color: var(--rojo-alerta); border-radius: 50%; display: inline-block; animation: pulse 1.6s infinite; }
-@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(166,64,47,0.55); } 70% { box-shadow: 0 0 0 6px rgba(166,64,47,0); } 100% { box-shadow: 0 0 0 0 rgba(166,64,47,0); } }
+.live-dot { height: 8px; width: 8px; background-color: var(--verde-fairway); border-radius: 50%; display: inline-block; animation: pulse 1.6s infinite; }
+.pending-dot { height: 8px; width: 8px; background-color: var(--texto-gris); opacity: 0.5; border-radius: 50%; display: inline-block; }
+@keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(18,59,44,0.5); } 70% { box-shadow: 0 0 0 6px rgba(18,59,44,0); } 100% { box-shadow: 0 0 0 0 rgba(18,59,44,0); } }
 
 /* -----------------------------------------
    ENCABEZADO / NAVEGACIÓN
@@ -187,7 +188,7 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
 
 @media (min-width: 900px) {
     #lobby-screen.card { max-width: 860px; }
-    .catalogo-container { grid-template-columns: repeat(3, 1fr); }
+    .catalogo-container { grid-template-columns: repeat(4, 1fr); }
     .admin-stats-grid { grid-template-columns: repeat(4, 1fr); }
     .admin-stats-grid .admin-stat-card[style] { grid-column: span 2 !important; }
 }
@@ -240,11 +241,47 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--dorado); 
 .tier-info { display: flex; justify-content: space-between; background: var(--blanco); padding: 12px 15px; border-radius: 8px; font-size: 13px; font-weight: 600; color: var(--texto-oscuro); border: 1px solid var(--borde-suave); }
 
 .player-list { max-height: 380px; overflow-y: auto; margin-bottom: 20px; padding-right: 5px; }
+
+.player-search-box {
+    display: flex; align-items: center; gap: 8px; background: var(--blanco);
+    border: 1.5px solid var(--borde-suave); border-radius: 10px; padding: 10px 14px;
+    margin-bottom: 12px;
+}
+.player-search-box input {
+    border: none; outline: none; flex: 1; font-size: 14px; padding: 0; margin: 0;
+    background: transparent;
+}
+.player-search-icon { font-size: 14px; opacity: 0.6; }
+
+.roster-chips-box {
+    background: var(--bg-crema); border: 1px solid var(--borde-suave); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 14px;
+}
+.roster-chips-label { font-size: 11px; color: var(--texto-gris); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 8px; }
+.roster-chips-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.roster-chip {
+    display: inline-flex; align-items: center; gap: 6px; background: var(--verde-fairway);
+    color: var(--bg-crema); font-size: 12px; font-weight: 600; padding: 5px 6px 5px 12px;
+    border-radius: 20px;
+}
+.roster-chip-remove {
+    background: rgba(255,255,255,0.2); border: none; color: var(--bg-crema); width: 18px; height: 18px;
+    border-radius: 50%; font-size: 13px; line-height: 1; cursor: pointer; display: flex;
+    align-items: center; justify-content: center; padding: 0;
+}
+.roster-chip-remove:hover { background: rgba(255,255,255,0.35); }
 .player-item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border: 1px solid var(--borde-suave); border-radius: 8px; margin-bottom: 10px; cursor: pointer; transition: all 0.2s ease; background: var(--blanco); }
 .player-item:hover { border-color: var(--verde-fairway); }
 .player-item.selected { border-color: var(--dorado); background-color: rgba(183,151,63,0.08); box-shadow: inset 0 0 0 1.5px var(--dorado); }
 .player-info-container { display: flex; align-items: center; gap: 12px; }
-.player-photo { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--borde-suave); background: var(--bg-crema); }
+.player-photo-wrap { position: relative; width: 44px; height: 44px; flex-shrink: 0; }
+.player-photo { width: 44px; height: 44px; border-radius: 50%; object-fit: cover; border: 1px solid var(--borde-suave); background: var(--bg-crema); display: block; }
+.player-photo-fallback {
+    width: 44px; height: 44px; border-radius: 50%; background: var(--bg-crema);
+    border: 1px solid var(--borde-suave); color: var(--verde-fairway);
+    display: flex; align-items: center; justify-content: center;
+}
+.player-photo-fallback svg { width: 22px; height: 22px; opacity: 0.55; }
 .player-name { font-weight: 600; font-size: 14px; display: block; color: var(--texto-oscuro); }
 .player-score { font-size: 11px; color: var(--texto-gris); display: block; margin-top: 2px; }
 
@@ -258,6 +295,7 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--dorado); 
 
 .tickets-container { max-height: 400px; overflow-y: auto; padding-right: 5px; }
 .ticket-card { background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 12px; padding: 15px; margin-bottom: 14px; box-shadow: 0 2px 4px rgba(18,59,44,0.03); }
+.ticket-card.torneo-destacado { border: 1.5px solid var(--dorado); box-shadow: 0 4px 14px rgba(183,151,63,0.18); }
 .ticket-card-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--borde-suave); padding-bottom: 10px; margin-bottom: 10px; font-size: 14px; font-weight: 600; }
 .ticket-card-body { font-size: 13px; color: var(--texto-gris); margin-bottom: 10px; }
 .ticket-card-body strong { color: var(--texto-oscuro); }
@@ -335,14 +373,19 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--dorado); 
 .reward-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(18,59,44,0.14); }
 
 .reward-photo-wrap {
-    position: relative; width: 100%; min-height: 140px; overflow: hidden;
+    position: relative; width: 100%; height: 150px;
+    background: var(--bg-crema); overflow: hidden;
 }
-.reward-photo-wrap img { width: 100%; height: auto; display: block; transition: filter 0.3s; }
-.reward-photo-wrap.locked img { filter: grayscale(60%) brightness(0.72); }
+.reward-photo-wrap img {
+    width: 100%; height: 100%; object-fit: contain; padding: 10px; box-sizing: border-box;
+    display: block; transition: filter 0.3s;
+}
+.reward-photo-wrap.locked img { filter: grayscale(60%) brightness(0.85); }
 .reward-photo-fallback {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    font-size: 40px; color: var(--dorado-suave);
+    color: var(--verde-fairway);
 }
+.reward-photo-fallback svg { width: 46px; height: 46px; opacity: 0.35; }
 .reward-tier-badge {
     position: absolute; top: 10px; left: 10px; z-index: 2;
     font-size: 9.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
