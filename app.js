@@ -1,6 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { getFirestore, doc, setDoc, getDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
@@ -16,6 +17,7 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 // 🔑 CORREO ELECTRÓNICO CONFIGURADO COMO ADMINISTRADOR DE LA APP
 const ADMIN_EMAIL = "jaortizgonzalez@gmail.com"; 
@@ -140,8 +142,8 @@ document.getElementById('btnRegisterToggle').addEventListener('click', () => {
         btnForgot.classList.add('hidden');
     } else {
         regFields.classList.add('hidden');
-        title.textContent = "Birdie";
-        sub.textContent = "Elige tu estrategia. Juega. Diviértete. Gana.";
+        title.textContent = "Elige tu estrategia. Juega. Diviértete. Gana.";
+        sub.textContent = "Torneos de golf entre amigos — acceso exclusivo del grupo.";
         btnLogin.textContent = "Entrar al grupo";
         btnRegToggle.textContent = "Crear cuenta nueva";
         btnForgot.classList.remove('hidden');
@@ -283,7 +285,10 @@ function switchTab(activeTab) {
     if (activeTab === 'apuestas' && auth.currentUser) cargarMisApuestas(auth.currentUser.uid);
     if (activeTab === 'ranking') cargarRanking();
     if (activeTab === 'catalogo' && auth.currentUser) cargarPremios(auth.currentUser.uid);
-    if (activeTab === 'admin' && auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) cargarPanelAdmin();
+    if (activeTab === 'admin' && auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        cargarPanelAdmin();
+        cargarGestionPremiosAdmin();
+    }
 }
 
 // --- LÓGICA DEL SLIDER ---
@@ -304,6 +309,54 @@ slider.addEventListener('input', (e) => {
 });
 
 // --- SINCRONIZACIÓN API ESPN -> FIRESTORE ---
+// --- Trae y parsea el leaderboard oficial de ESPN (se usa tanto para sincronizar en vivo
+//     como para la liquidación final del torneo). Ahora también captura la POSICIÓN oficial
+//     de cada jugador (no solo el score), necesaria para validar el Top 10 al liquidar. ---
+async function fetchTorneoDesdeESPN() {
+    const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
+    const data = await response.json();
+    const event = data.events[0];
+
+    const torneoData = {
+        id: event.id,
+        name: event.shortName || event.name,
+        course: event.courses ? event.courses[0].name : "PGA Tour Course",
+        startDate: event.date,
+        status: "ACTIVE",
+        updated_at: serverTimestamp(),
+        players: []
+    };
+
+    const competitors = event.competitions[0].competitors;
+    competitors.forEach((comp) => {
+        let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
+
+        let rawScore = comp.score;
+        let displayScore = "E";
+        if (rawScore !== undefined && rawScore !== null) {
+            displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
+        }
+
+        // Posición oficial (ranking real del torneo), no el score crudo.
+        // Ej: position_id = 1, 2, 3... position_display = "1", "T5", "CUT", etc.
+        const posId = comp.status && comp.status.position && comp.status.position.id
+            ? parseInt(comp.status.position.id)
+            : null;
+        const posDisplay = (comp.status && comp.status.position && comp.status.position.displayName) || null;
+
+        torneoData.players.push({
+            id: comp.athlete.id,
+            name: comp.athlete.displayName,
+            score: displayScore,
+            position_id: (posId && !isNaN(posId)) ? posId : null,
+            position_display: posDisplay,
+            photo: photoUrl
+        });
+    });
+
+    return torneoData;
+}
+
 document.getElementById('btnSyncDb')?.addEventListener('click', async () => {
     const btn = document.getElementById('btnSyncDb');
     if (!btn) return;
@@ -311,42 +364,11 @@ document.getElementById('btnSyncDb')?.addEventListener('click', async () => {
     btn.disabled = true;
 
     try {
-        const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
-        const data = await response.json();
-        const event = data.events[0];
-        
-        const torneoData = {
-            id: event.id,
-            name: event.shortName || event.name,
-            course: event.courses ? event.courses[0].name : "PGA Tour Course",
-            startDate: event.date, 
-            status: "ACTIVE",
-            updated_at: serverTimestamp(),
-            players: []
-        };
-
-        const competitors = event.competitions[0].competitors;
-        competitors.forEach((comp) => {
-            let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
-            
-            let rawScore = comp.score;
-            let displayScore = "E";
-            if (rawScore !== undefined && rawScore !== null) {
-                displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
-            }
-
-            torneoData.players.push({
-                id: comp.athlete.id,
-                name: comp.athlete.displayName,
-                score: displayScore,
-                photo: photoUrl
-            });
-        });
-
+        const torneoData = await fetchTorneoDesdeESPN();
         await setDoc(doc(db, "tournaments", torneoData.id), torneoData);
         state.torneoActual = torneoData;
         actualizarUIەTorneo();
-        mostrarModal("Sincronización Exitosa", "Los datos oficiales del torneo se han actualizado correctamente.", "⛳");
+        mostrarModal("Sincronización Exitosa", "Los datos oficiales del torneo se han actualizado correctamente. Esta actualización es solo INFORMATIVA/EN VIVO — todavía no reparte puntos.", "⛳");
 
     } catch (error) {
         mostrarModal("Error de Conexión", "No pudimos sincronizar con los servidores oficiales.", "⚠️");
@@ -449,6 +471,15 @@ async function cargarMisApuestas(userId) {
             const estadoPago = bet.payment_status === "APPROVED" ? "aprobado" : "pendiente";
             const estadoPagoLabel = bet.payment_status === "APPROVED" ? "Pago confirmado" : "Pago pendiente";
 
+            let estadoPuntosHtml;
+            if (bet.payment_status !== "APPROVED") {
+                estadoPuntosHtml = `<p style="margin:0 0 4px 0; font-size:12px; color:var(--texto-gris);">⏳ Puntos: se activan cuando se confirme tu pago.</p>`;
+            } else if (bet.settled) {
+                estadoPuntosHtml = `<p style="margin:0 0 4px 0; font-size:12px; color:var(--verde-fairway); font-weight:700;">🏆 Puntos oficiales: ${(bet.points || 0).toLocaleString('es-CO')} pts (torneo liquidado)</p>`;
+            } else {
+                estadoPuntosHtml = `<p style="margin:0 0 4px 0; font-size:12px; color:var(--texto-gris);">⏳ Torneo en curso — los puntos se asignan solo al liquidarse, validando el Top 10 oficial.</p>`;
+            }
+
             card.innerHTML = `
                 <div class="ticket-card-header">
                     <span>${bet.tournament_name}</span>
@@ -456,6 +487,7 @@ async function cargarMisApuestas(userId) {
                 </div>
                 <div class="ticket-card-body">
                     <p style="margin:0 0 6px 0;"><span class="payment-badge ${estadoPago}">${estadoPagoLabel}</span></p>
+                    ${estadoPuntosHtml}
                     <p style="margin:0 0 4px 0;"><strong>Multiplicador:</strong> ${bet.multiplier}x</p>
                     <p style="margin:0 0 10px 0;"><strong>Equipo:</strong> ${jugadoresNombres}</p>
                     ${botonEditarHtml}
@@ -760,108 +792,139 @@ async function cargarPanelAdmin() {
     }
 }
 
+// Tabla de puntos SOLO para quien termine en el Top 10 oficial. Fuera del Top 10 = 0 puntos.
+const PUNTOS_POR_POSICION = { 1: 100, 2: 80, 3: 65, 4: 55, 5: 50, 6: 45, 7: 40, 8: 38, 9: 36, 10: 34 };
+function puntosPorPosicion(position_id) {
+    if (!position_id || position_id > 10) return 0;
+    return PUNTOS_POR_POSICION[position_id] || 0;
+}
+
 document.getElementById('btnLiquidarTorneo')?.addEventListener('click', async () => {
     if (!state.torneoActual) return;
+
+    const btn = document.getElementById('btnLiquidarTorneo');
+    const textoOriginal = btn.textContent;
+    btn.textContent = "🔄 Trayendo resultado oficial final...";
+    btn.disabled = true;
+
     try {
-        const torneoRef = doc(db, "tournaments", state.torneoActual.id);
-        await updateDoc(torneoRef, { status: "CLOSED", updated_at: serverTimestamp() });
-        state.torneoActual.status = "CLOSED";
+        // 1) Traemos el resultado FINAL oficial (con posición real de cada jugador), no el score en vivo.
+        const torneoFinal = await fetchTorneoDesdeESPN();
+        torneoFinal.status = "CLOSED";
+
+        // Chequeo de seguridad: si ESPN no nos dio ninguna posición válida, algo cambió en su formato
+        // de respuesta. Mejor avisar y detener la liquidación que repartir 0 puntos a todo el mundo.
+        const conPosicionValida = (torneoFinal.players || []).some(p => p.position_id !== null);
+        if (!conPosicionValida) {
+            mostrarModal(
+                "No se pudo validar el Top 10",
+                "ESPN no devolvió la posición oficial de ningún jugador (puede que su formato de datos haya cambiado). No se liquidó el torneo ni se tocaron puntos — revisa la consola (F12) y avísame antes de reintentar.",
+                "⚠️"
+            );
+            console.error("Liquidación abortada: ningún jugador tiene position_id. Revisar estructura de la respuesta de ESPN.", torneoFinal.players);
+            btn.textContent = textoOriginal;
+            btn.disabled = false;
+            return;
+        }
+
+        await setDoc(doc(db, "tournaments", torneoFinal.id), torneoFinal);
+        state.torneoActual = torneoFinal;
         actualizarUIەTorneo();
-        mostrarModal("Torneo Liquidado", "El torneo ha sido cerrado exitosamente. Las inscripciones y modificaciones han quedado bloqueadas.", "🔒");
+
+        // Mapa rápido: id de jugador -> posición oficial final
+        const posicionPorJugador = {};
+        (torneoFinal.players || []).forEach(p => { posicionPorJugador[p.id] = p.position_id; });
+
+        // 2) Solo las apuestas con PAGO CONFIRMADO de este torneo reciben puntos.
+        //    Las pendientes de pago quedan en 0 (no cuentan, como debe ser).
+        const betsQ = query(
+            collection(db, "bets"),
+            where("tournament_id", "==", torneoFinal.id),
+            where("payment_status", "==", "APPROVED")
+        );
+        const betsSnap = await getDocs(betsQ);
+
+        let actualizadas = 0;
+        for (const betDoc of betsSnap.docs) {
+            const bet = betDoc.data();
+            let puntosBase = 0;
+            (bet.roster || []).forEach(player => {
+                puntosBase += puntosPorPosicion(posicionPorJugador[player.id]);
+            });
+            const puntosFinales = Math.round(puntosBase * (bet.multiplier || 1));
+
+            await updateDoc(doc(db, "bets", betDoc.id), {
+                points: puntosFinales,
+                settled: true,
+                settled_at: serverTimestamp()
+            });
+            actualizadas++;
+        }
+
+        mostrarModal(
+            "Torneo Liquidado",
+            `Se trajo el resultado oficial final y se asignaron puntos a ${actualizadas} apuesta(s) confirmada(s). Solo cuentan los jugadores que terminaron en el Top 10 oficial. Las inscripciones quedaron bloqueadas.`,
+            "🔒"
+        );
     } catch (e) {
-        mostrarModal("Error", "No se pudo liquidar el torneo.", "❌");
+        console.error("Error liquidando torneo:", e);
+        mostrarModal("Error", "No se pudo liquidar el torneo. Revisa la consola (F12) para más detalle.", "❌");
+    } finally {
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
     }
 });
 
-// --- CALCULAR PUNTOS REALES DEL USUARIO (solo apuestas con pago confirmado) ---
+// --- CALCULAR PUNTOS REALES DEL USUARIO ---
+// Solo cuentan apuestas: 1) con pago confirmado, Y 2) de un torneo ya LIQUIDADO (settled: true).
+// Si el torneo sigue en curso, esa apuesta simplemente no aparece aquí todavía = 0 puntos, como debe ser.
 async function calcularMisPuntos(userId) {
-    const q = query(collection(db, "bets"), where("user_id", "==", userId), where("payment_status", "==", "APPROVED"));
+    const q = query(
+        collection(db, "bets"),
+        where("user_id", "==", userId),
+        where("payment_status", "==", "APPROVED"),
+        where("settled", "==", true)
+    );
     const snap = await getDocs(q);
     if (snap.empty) return 0;
 
-    const bets = [];
-    const tournamentIds = new Set();
-    snap.forEach(d => { bets.push(d.data()); tournamentIds.add(d.data().tournament_id); });
-
-    const tournamentScoreMaps = {};
-    for (const tId of tournamentIds) {
-        if (!tId) continue;
-        try {
-            const tSnap = await getDoc(doc(db, "tournaments", tId));
-            if (!tSnap.exists()) continue;
-            const tData = tSnap.data();
-            const map = {};
-            (tData.players || []).forEach(p => {
-                let s = String(p.score || "E").trim().toUpperCase();
-                let val = 0;
-                if (s === "E" || s === "EVEN" || s === "-" || s === "") val = 0;
-                else if (s.startsWith("+")) val = -(parseInt(s.replace(/\D/g, "")) || 0) * 5;
-                else if (s.startsWith("-")) val = (parseInt(s.replace(/\D/g, "")) || 0) * 10;
-                else { let parsed = parseInt(s); val = isNaN(parsed) ? 0 : parsed; }
-                map[p.id] = val;
-            });
-            tournamentScoreMaps[tId] = map;
-        } catch (e) {
-            console.error("Error leyendo torneo para puntos:", tId, e);
-        }
-    }
-
     let total = 0;
-    bets.forEach(bet => {
-        const map = tournamentScoreMaps[bet.tournament_id] || {};
-        let basePoints = 0;
-        (bet.roster || []).forEach(player => {
-            let v = Number(map[player.id]);
-            if (isNaN(v)) v = 0;
-            basePoints += v;
-        });
-        let pts = Math.max(10, basePoints * (bet.multiplier || 1));
-        if (isNaN(pts)) pts = 10;
-        total += pts;
+    snap.forEach(d => {
+        const bet = d.data();
+        total += (bet.points || 0);
     });
     return Math.round(total);
 }
 
 // --- CARGAR PREMIOS (fotos y precios reales, puntos calculados automáticamente) ---
 //
-// ⚙️ TASA DE CAMBIO PUNTOS → PESOS: cuántos pesos de VALOR REAL del producto representa 1 punto.
-// Súbelo si sientes que la gente gana premios demasiado fácil / te está costando plata.
-// Bájalo si los premios quedan inalcanzables. Ajusta con datos reales de tus primeros torneos.
-const PESOS_POR_PUNTO = 45;
+// ⚙️ TASA DE CAMBIO PUNTOS → PESOS ahora vive en Firestore (colección "config", doc "puntos",
+// campo "pesos_por_punto"), editable desde el panel Admin — nada de tocar código para cambiarla.
+let PESOS_POR_PUNTO = 45; // valor de respaldo mientras carga el real desde Firestore
 
-// ⚙️ CATÁLOGO: pon aquí el precio REAL de mercado de cada producto (COP) y la URL de SU FOTO REAL
-// (sube la foto a Firebase Storage o tu propio hosting — no uses fotos de otras tiendas sin permiso).
-// Los puntos requeridos se calculan solos: precio_real / PESOS_POR_PUNTO. Así, si sube el precio del
-// producto en el mercado, solo actualizas el número acá y el juego se re-balancea automáticamente.
-const CATALOGO_PREMIOS = [
-    {
-        id: 'r1',
-        nombre: 'Guante de Golf FootJoy WeatherSof',
-        precio_real: 89000,
-        imagen: 'PEGA_AQUI_URL_FOTO_GUANTE',
-        tier: 'bronce',
-        icono_respaldo: '🧤'
-    },
-    {
-        id: 'r2',
-        nombre: 'Docena Pelotas Callaway Chrome Soft',
-        precio_real: 249000,
-        imagen: 'PEGA_AQUI_URL_FOTO_PELOTAS',
-        tier: 'plata',
-        icono_respaldo: '⛳'
-    },
-    {
-        id: 'r3',
-        nombre: 'Wedge Cleveland RTX Especializado',
-        precio_real: 780000,
-        imagen: 'PEGA_AQUI_URL_FOTO_WEDGE',
-        tier: 'oro',
-        icono_respaldo: '🏌️'
+async function cargarConfigPuntos() {
+    try {
+        const snap = await getDoc(doc(db, "config", "puntos"));
+        if (snap.exists() && snap.data().pesos_por_punto) {
+            PESOS_POR_PUNTO = Number(snap.data().pesos_por_punto);
+        }
+    } catch (e) {
+        console.error("No se pudo leer la configuración de puntos, se usa el valor de respaldo:", e);
     }
-];
+}
 
 function puntosRequeridos(item) {
-    return Math.ceil(item.precio_real / PESOS_POR_PUNTO);
+    return Math.ceil((item.precio_real || 0) / PESOS_POR_PUNTO);
+}
+
+// El catálogo ahora vive 100% en Firestore (colección "premios") — se administra desde el
+// panel Admin (agregar / editar / eliminar / subir foto), nunca hay que tocar la base de datos.
+async function obtenerCatalogoPremios() {
+    const snap = await getDocs(collection(db, "premios"));
+    const items = [];
+    snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+    items.sort((a, b) => (a.precio_real || 0) - (b.precio_real || 0));
+    return items;
 }
 
 async function cargarPremios(userId) {
@@ -871,6 +934,8 @@ async function cargarPremios(userId) {
 
     if (puntosEl) puntosEl.textContent = 'Calculando...';
     if (restanteEl) restanteEl.textContent = 'Calculando...';
+
+    await cargarConfigPuntos();
 
     let totalPuntos = 0;
     try {
@@ -884,21 +949,29 @@ async function cargarPremios(userId) {
 
     if (puntosEl) puntosEl.textContent = totalPuntos.toLocaleString('es-CO') + " pts";
 
-    const umbrales = CATALOGO_PREMIOS.map(puntosRequeridos);
-    const maxUmbral = Math.max(...umbrales);
-    const pct = Math.min(100, Math.round((totalPuntos / maxUmbral) * 100));
-    if (fillEl) fillEl.style.width = pct + "%";
-
-    const siguienteIdx = umbrales.findIndex(p => totalPuntos < p);
-    if (restanteEl) {
-        restanteEl.textContent = siguienteIdx > -1
-            ? `Faltan ${(umbrales[siguienteIdx] - totalPuntos).toLocaleString('es-CO')} pts para tu próxima recompensa`
-            : "¡Ya alcanzaste todos los premios disponibles!";
-    }
-
     try {
+        const catalogo = await obtenerCatalogoPremios();
         const container = document.getElementById('catalogo-list');
         container.innerHTML = '';
+
+        if (catalogo.length === 0) {
+            container.innerHTML = `<div class="empty-state">Todavía no hay premios en el catálogo. Un administrador puede agregarlos desde el panel Admin.</div>`;
+            if (fillEl) fillEl.style.width = "0%";
+            if (restanteEl) restanteEl.textContent = "Sin premios configurados todavía.";
+            return;
+        }
+
+        const umbrales = catalogo.map(puntosRequeridos);
+        const maxUmbral = Math.max(...umbrales, 1);
+        const pct = Math.min(100, Math.round((totalPuntos / maxUmbral) * 100));
+        if (fillEl) fillEl.style.width = pct + "%";
+
+        const siguienteIdx = umbrales.findIndex(p => totalPuntos < p);
+        if (restanteEl) {
+            restanteEl.textContent = siguienteIdx > -1
+                ? `Faltan ${(umbrales[siguienteIdx] - totalPuntos).toLocaleString('es-CO')} pts para tu próxima recompensa`
+                : "¡Ya alcanzaste todos los premios disponibles!";
+        }
 
         // Consulta si el usuario ya reclamó cada premio, para no mostrar el botón dos veces
         let misClaims = [];
@@ -909,7 +982,7 @@ async function cargarPremios(userId) {
             console.error("No se pudieron leer los reclamos previos:", e);
         }
 
-        CATALOGO_PREMIOS.forEach(item => {
+        catalogo.forEach(item => {
             const req = puntosRequeridos(item);
             const alcanzado = totalPuntos >= req;
             const yaReclamado = misClaims.some(c => c.item_id === item.id);
@@ -918,7 +991,7 @@ async function cargarPremios(userId) {
             const div = document.createElement('div');
             div.className = 'reward-card';
 
-            const tieneImagenValida = item.imagen && !item.imagen.startsWith('PEGA_AQUI');
+            const tieneImagenValida = !!item.imagen;
 
             div.innerHTML = `
                 <div class="reward-photo-wrap ${alcanzado ? '' : 'locked'}">
@@ -926,14 +999,14 @@ async function cargarPremios(userId) {
                         ? `<img src="${item.imagen}" alt="${item.nombre}" onerror="this.style.display='none'; this.parentElement.querySelector('.reward-photo-fallback').style.display='flex';">`
                         : ''
                     }
-                    <div class="reward-photo-fallback" style="${tieneImagenValida ? 'display:none;' : ''}">${item.icono_respaldo}</div>
-                    <span class="reward-tier-badge ${item.tier}">${item.tier}</span>
+                    <div class="reward-photo-fallback" style="${tieneImagenValida ? 'display:none;' : ''}">${item.icono_respaldo || '🎁'}</div>
+                    <span class="reward-tier-badge ${item.tier || 'bronce'}">${item.tier || 'bronce'}</span>
                     ${!alcanzado ? `<span class="reward-lock-badge">🔒</span>` : ''}
                 </div>
                 <div class="reward-body">
                     <div class="reward-name">${item.nombre}</div>
                     <div class="reward-price-row">
-                        <span class="reward-price-real">Valor real: $${item.precio_real.toLocaleString('es-CO')}</span>
+                        <span class="reward-price-real">Valor real: $${(item.precio_real || 0).toLocaleString('es-CO')}</span>
                         <span class="reward-pts">${req.toLocaleString('es-CO')} pts</span>
                     </div>
                     <div class="reward-progress-mini"><div class="reward-progress-mini-fill" style="width:${miniPct}%;"></div></div>
@@ -972,6 +1045,200 @@ async function cargarPremios(userId) {
         console.error("cargarPremios: error renderizando el catálogo:", e);
     }
 }
+
+// =====================================================================
+// --- GESTIÓN DE PREMIOS DESDE EL PANEL ADMIN (CRUD completo, sin tocar la BD) ---
+// =====================================================================
+
+let premioEditandoId = null; // null = creando uno nuevo; si no, estamos editando ese id
+let imagenSubidaUrl = null;  // URL resultante tras subir la foto a Firebase Storage
+
+async function cargarGestionPremiosAdmin() {
+    // Tasa de cambio puntos -> pesos
+    await cargarConfigPuntos();
+    const inputTasa = document.getElementById('admin-tasa-puntos');
+    if (inputTasa) inputTasa.value = PESOS_POR_PUNTO;
+
+    // Lista de premios existentes
+    const listContainer = document.getElementById('admin-premios-crud-list');
+    if (!listContainer) return;
+    listContainer.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
+
+    try {
+        const catalogo = await obtenerCatalogoPremios();
+        listContainer.innerHTML = '';
+
+        if (catalogo.length === 0) {
+            listContainer.innerHTML = `<div class="empty-state" style="padding:15px; font-size:12px;">Aún no has agregado ningún premio. Usa el formulario de abajo.</div>`;
+            return;
+        }
+
+        catalogo.forEach(item => {
+            const req = puntosRequeridos(item);
+            const div = document.createElement('div');
+            div.className = 'ticket-card';
+            div.innerHTML = `
+                <div class="ticket-card-header">
+                    <span style="font-size:12px;">${item.nombre}</span>
+                    <span style="color:var(--dorado); font-size:11px;">${req.toLocaleString('es-CO')} pts</span>
+                </div>
+                <div class="ticket-card-body">
+                    <p style="margin:0 0 8px 0; font-size:12px;">Valor real: $${(item.precio_real || 0).toLocaleString('es-CO')} · Nivel: ${item.tier || 'bronce'}</p>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn-outline btn-small btn-editar-premio" data-id="${item.id}" style="flex:1;">✏️ Editar</button>
+                        <button class="btn-outline btn-small btn-eliminar-premio" data-id="${item.id}" style="flex:1; border-color:var(--rojo-alerta); color:var(--rojo-alerta);">🗑️ Eliminar</button>
+                    </div>
+                </div>
+            `;
+            listContainer.appendChild(div);
+        });
+
+        document.querySelectorAll('.btn-editar-premio').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                const item = catalogo.find(c => c.id === btn.dataset.id);
+                if (item) cargarPremioEnFormulario(item);
+            });
+        });
+        document.querySelectorAll('.btn-eliminar-premio').forEach(btn => {
+            btn.addEventListener('click', async () => {
+                if (!confirm("¿Eliminar este premio del catálogo? Esta acción no se puede deshacer.")) return;
+                try {
+                    await deleteDoc(doc(db, "premios", btn.dataset.id));
+                    mostrarModal("Premio Eliminado", "Se quitó del catálogo.", "🗑️", () => cargarGestionPremiosAdmin());
+                } catch (e) {
+                    mostrarModal("Error", "No se pudo eliminar el premio.", "❌");
+                }
+            });
+        });
+    } catch (e) {
+        console.error("Error cargando gestión de premios:", e);
+        listContainer.innerHTML = `<p style="color:var(--rojo-alerta); font-size:12px;">Error cargando el catálogo.</p>`;
+    }
+}
+
+function cargarPremioEnFormulario(item) {
+    premioEditandoId = item.id;
+    imagenSubidaUrl = item.imagen || null;
+    document.getElementById('premio-form-titulo').textContent = "Editando: " + item.nombre;
+    document.getElementById('premio-nombre').value = item.nombre || '';
+    document.getElementById('premio-precio').value = item.precio_real || '';
+    document.getElementById('premio-tier').value = item.tier || 'bronce';
+    document.getElementById('premio-icono').value = item.icono_respaldo || '';
+    actualizarPreviewImagenPremio(item.imagen || null);
+    actualizarPuntosPreview();
+    document.getElementById('btnCancelarEdicionPremio').classList.remove('hidden');
+    document.getElementById('premio-form-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function limpiarFormularioPremio() {
+    premioEditandoId = null;
+    imagenSubidaUrl = null;
+    document.getElementById('premio-form-titulo').textContent = "Agregar nuevo premio";
+    document.getElementById('premio-nombre').value = '';
+    document.getElementById('premio-precio').value = '';
+    document.getElementById('premio-tier').value = 'bronce';
+    document.getElementById('premio-icono').value = '';
+    document.getElementById('premio-imagen-file').value = '';
+    actualizarPreviewImagenPremio(null);
+    actualizarPuntosPreview();
+    document.getElementById('btnCancelarEdicionPremio').classList.add('hidden');
+}
+
+function actualizarPreviewImagenPremio(url) {
+    const preview = document.getElementById('premio-imagen-preview');
+    if (!preview) return;
+    if (url) {
+        preview.src = url;
+        preview.classList.remove('hidden');
+    } else {
+        preview.classList.add('hidden');
+        preview.removeAttribute('src');
+    }
+}
+
+function actualizarPuntosPreview() {
+    const precio = Number(document.getElementById('premio-precio')?.value || 0);
+    const el = document.getElementById('premio-puntos-preview');
+    if (el) {
+        const pts = Math.ceil(precio / PESOS_POR_PUNTO);
+        el.textContent = precio > 0 ? `= ${pts.toLocaleString('es-CO')} pts requeridos` : '';
+    }
+}
+
+document.getElementById('premio-precio')?.addEventListener('input', actualizarPuntosPreview);
+
+document.getElementById('premio-imagen-file')?.addEventListener('change', async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const statusEl = document.getElementById('premio-imagen-status');
+    if (statusEl) statusEl.textContent = "Subiendo foto...";
+    try {
+        const path = `premios/${Date.now()}_${file.name}`;
+        const storageRef = ref(storage, path);
+        await uploadBytes(storageRef, file);
+        const url = await getDownloadURL(storageRef);
+        imagenSubidaUrl = url;
+        actualizarPreviewImagenPremio(url);
+        if (statusEl) statusEl.textContent = "✅ Foto subida correctamente.";
+    } catch (err) {
+        console.error("Error subiendo imagen:", err);
+        if (statusEl) statusEl.textContent = "❌ No se pudo subir la foto.";
+    }
+});
+
+document.getElementById('btnCancelarEdicionPremio')?.addEventListener('click', limpiarFormularioPremio);
+
+document.getElementById('btnGuardarPremio')?.addEventListener('click', async () => {
+    const nombre = document.getElementById('premio-nombre').value.trim();
+    const precio = Number(document.getElementById('premio-precio').value);
+    const tier = document.getElementById('premio-tier').value;
+    const icono = document.getElementById('premio-icono').value.trim() || '🎁';
+
+    if (!nombre || !precio || precio <= 0) {
+        mostrarModal("Datos Incompletos", "Ponle un nombre y un precio real válido al premio.", "⚠️");
+        return;
+    }
+
+    const data = {
+        nombre,
+        precio_real: precio,
+        tier,
+        icono_respaldo: icono,
+        imagen: imagenSubidaUrl || null,
+        updated_at: serverTimestamp()
+    };
+
+    try {
+        if (premioEditandoId) {
+            await updateDoc(doc(db, "premios", premioEditandoId), data);
+            mostrarModal("Premio Actualizado", "Los cambios se guardaron correctamente.", "✅");
+        } else {
+            data.created_at = serverTimestamp();
+            await addDoc(collection(db, "premios"), data);
+            mostrarModal("Premio Agregado", "Ya aparece en el catálogo de todos los jugadores.", "🎁");
+        }
+        limpiarFormularioPremio();
+        cargarGestionPremiosAdmin();
+    } catch (e) {
+        console.error("Error guardando premio:", e);
+        mostrarModal("Error", "No se pudo guardar el premio.", "❌");
+    }
+});
+
+document.getElementById('btnGuardarTasaPuntos')?.addEventListener('click', async () => {
+    const valor = Number(document.getElementById('admin-tasa-puntos').value);
+    if (!valor || valor <= 0) {
+        mostrarModal("Valor Inválido", "Ingresa un número mayor a 0.", "⚠️");
+        return;
+    }
+    try {
+        await setDoc(doc(db, "config", "puntos"), { pesos_por_punto: valor, updated_at: serverTimestamp() }, { merge: true });
+        PESOS_POR_PUNTO = valor;
+        mostrarModal("Tasa Actualizada", "Los puntos requeridos de todos los premios se recalcularán con este nuevo valor.", "✅", () => cargarGestionPremiosAdmin());
+    } catch (e) {
+        mostrarModal("Error", "No se pudo guardar la tasa.", "❌");
+    }
+});
 
 // --- SELECCIÓN DE ROSTER ---
 document.getElementById('btnSiguientePago').addEventListener('click', () => {
