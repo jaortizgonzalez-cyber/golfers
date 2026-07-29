@@ -9,7 +9,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260729b">
+    <link rel="stylesheet" href="style.css?v=20260730">
 </head>
 <body>
 
@@ -81,6 +81,12 @@
 
         <!-- CONTENIDO A: Torneos -->
         <div id="content-torneos" class="tab-content">
+            <div class="header-section mt-15">
+                <h2 style="font-size:15px; margin-bottom:2px;">📅 Torneos del mes</h2>
+                <p class="subtitle-small" style="margin-bottom:10px;">Programación oficial del PGA Tour para este mes.</p>
+            </div>
+            <div id="calendario-torneos-list" style="margin-bottom: 22px;"></div>
+
             <div class="header-section mt-15">
                 <h2 style="display: flex; align-items: center; gap: 8px;">Torneo en Curso <span class="live-dot"></span></h2>
                 <p class="subtitle-small">Selecciona tu inversión, arma tu equipo y compite por la gloria.</p>
@@ -269,7 +275,8 @@
             <h2 class="serif-title mt-15">Panel de Administración</h2>
             <p class="subtitle-small">Control financiero, liquidación y sincronización de bases de datos.</p>
 
-            <button id="btnSyncDb" class="btn-primary" style="background-color: var(--verde-oscuro); margin-bottom: 20px;">🔄 Actualizar Torneo en Vivo</button>
+            <button id="btnSyncDb" class="btn-primary" style="background-color: var(--verde-oscuro); margin-bottom: 10px;">🔄 Actualizar Torneo en Vivo</button>
+            <button id="btnSyncCalendario" class="btn-outline" style="margin-bottom: 20px;">📅 Actualizar Calendario del Mes</button>
 
             <div class="admin-stats-grid">
                 <div class="admin-stat-card">
@@ -419,6 +426,6 @@
         <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
     </div>
 
-    <script type="module" src="app.js?v=20260729"></script>
+    <script type="module" src="app.js?v=20260730b"></script>
 </body>
 </html>
