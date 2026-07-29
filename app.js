@@ -530,13 +530,24 @@ async function cargarCalendarioDelMes() {
             .filter(t => !isNaN(t.inicioDate))
             .sort((a, b) => a.inicioDate - b.inicioDate);
 
+        // 🔧 AJUSTE: si el torneo ACTIVO (el de arriba, con el botón "Elegir equipo e
+        // inscribirme") también aparece en el calendario del mes, lo excluimos de esta lista.
+        // Antes se repetía dos veces en la misma pantalla — arriba decía "ABIERTO" y aquí abajo
+        // "EMPIEZA MAÑANA", generando confusión sobre cuál tarjeta era la real para interactuar.
+        // "Torneos del mes" ahora es puramente informativo: solo muestra OTROS torneos próximos
+        // distintos al que ya está arriba. Comparamos por nombre (normalizado) ya que el ID de
+        // esta API de calendario no coincide con el ID del torneo activo en ESPN.
+        const nombreTorneoActivo = (state.torneoActual?.name || '').trim().toLowerCase();
+
         const proximos = conFecha.filter(t => {
             const inicioSinHora = new Date(t.inicioDate.getFullYear(), t.inicioDate.getMonth(), t.inicioDate.getDate());
-            return inicioSinHora >= hoySinHora;
+            const esFuturo = inicioSinHora >= hoySinHora;
+            const esElTorneoActivo = nombreTorneoActivo && (t.nombre || '').trim().toLowerCase() === nombreTorneoActivo;
+            return esFuturo && !esElTorneoActivo;
         });
 
         if (proximos.length === 0) {
-            container.innerHTML = `<div class="empty-state" style="padding:14px; font-size:12px;">No hay torneos próximos en el calendario cargado.</div>`;
+            container.innerHTML = `<div class="empty-state" style="padding:14px; font-size:12px;">No hay más torneos próximos en el calendario cargado.</div>`;
             return;
         }
 
