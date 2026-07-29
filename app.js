@@ -697,6 +697,18 @@ async function cargarMisApuestas(userId) {
                 ? `<button class="btn-outline btn-small btn-editar" data-id="${betId}">Modificar Equipo</button>`
                 : `<span style="font-size:11px; color:var(--rojo-alerta); font-weight:600;">🔒 Edición bloqueada (< 1h o torneo cerrado)</span>`;
 
+            // 🗑️ Eliminar apuesta: solo se permite si el usuario aún puede modificar (mismo
+            // límite de tiempo que "Modificar Equipo": antes de 1h del inicio y torneo no cerrado)
+            // Y si el pago todavía NO ha sido confirmado por el admin. Una vez el pago está
+            // "APPROVED" ya no se puede auto-eliminar desde aquí (para proteger la contabilidad);
+            // en ese caso el usuario debe contactar al admin para gestionar el reembolso/baja.
+            // ⚠️ IMPORTANTE: esto requiere que las reglas de Firestore permitan al dueño de la
+            // apuesta borrar su propio documento mientras esté PENDIENTE (ver nota de reglas).
+            const puedeEliminar = sePuedeModificar && bet.payment_status !== "APPROVED";
+            let botonEliminarHtml = puedeEliminar
+                ? `<button class="btn-outline btn-small btn-eliminar-apuesta" data-id="${betId}" style="color:var(--rojo-alerta); border-color:var(--rojo-alerta); margin-left:8px;">🗑️ Eliminar</button>`
+                : '';
+
             const estadoPago = bet.payment_status === "APPROVED" ? "aprobado" : "pendiente";
             const estadoPagoLabel = bet.payment_status === "APPROVED" ? "Pago confirmado" : "Pago pendiente";
 
@@ -719,7 +731,7 @@ async function cargarMisApuestas(userId) {
                     ${estadoPuntosHtml}
                     <p style="margin:0 0 4px 0;"><strong>Multiplicador:</strong> ${bet.multiplier}x</p>
                     <p style="margin:0 0 10px 0;"><strong>Equipo:</strong> ${jugadoresNombres}</p>
-                    ${botonEditarHtml}
+                    ${botonEditarHtml}${botonEliminarHtml}
                 </div>
             `;
             container.appendChild(card);
@@ -728,6 +740,29 @@ async function cargarMisApuestas(userId) {
         document.querySelectorAll('.btn-editar').forEach(btn => {
             btn.addEventListener('click', async (e) => {
                 await iniciarEdicionTicket(e.target.dataset.id);
+            });
+        });
+
+        // 🗑️ Eliminar apuesta (baja de participación). Requiere que las reglas de Firestore
+        // permitan "allow delete" al dueño de la apuesta mientras payment_status == "PENDIENTE"
+        // (ver nota de reglas más abajo) — de lo contrario Firestore rechazará el borrado con
+        // "Missing or insufficient permissions", igual que ocurrió antes con /tournaments.
+        document.querySelectorAll('.btn-eliminar-apuesta').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                const betId = e.target.dataset.id;
+                if (!confirm("¿Seguro que deseas eliminar esta apuesta? Esta acción no se puede deshacer.")) return;
+
+                btn.disabled = true;
+                btn.textContent = "Eliminando...";
+                try {
+                    await deleteDoc(doc(db, "bets", betId));
+                    mostrarModal("Apuesta Eliminada", "Tu apuesta fue eliminada correctamente. Ya no participas con este equipo.", "🗑️", () => cargarMisApuestas(userId));
+                } catch (error) {
+                    console.error("Error eliminando apuesta:", error);
+                    mostrarModal("Error al Eliminar", "No se pudo eliminar la apuesta. Es posible que las reglas de Firestore aún no permitan esta acción para tu usuario — contacta al administrador.", "⚠️");
+                    btn.disabled = false;
+                    btn.textContent = "🗑️ Eliminar";
+                }
             });
         });
 
@@ -781,6 +816,21 @@ async function cargarRanking() {
             return;
         }
 
+        // 🐛 BUG CORREGIDO: antes este Leaderboard calculaba un puntaje "en vivo" propio con una
+        // fórmula distinta a la oficial, y encima forzaba un PISO de 10 puntos siempre
+        // (Math.max(10, basePoints * multiplier)) — por eso TODOS mostraban "10 pts" incluso con
+        // el torneo sin comenzar. Eso viola la regla del juego: los puntos SOLO existen cuando el
+        // admin liquida el torneo (botón "Liquidar") y valida el Top 10 oficial de cada jugador.
+        //
+        // Ahora este Leaderboard ya NO recalcula nada por su cuenta: simplemente MUESTRA los
+        // puntos oficiales que ya quedaron guardados en cada apuesta (bet.points / bet.settled)
+        // por la función de liquidación — la misma fuente de verdad que usa la pestaña
+        // "Mis apuestas". Si el torneo activo aún no fue liquidado, no se muestra ningún puntaje.
+        if (state.torneoActual.status !== "CLOSED") {
+            container.innerHTML = `<div class="empty-state">⏳ El torneo activo aún no ha finalizado ni ha sido liquidado por el administrador. Los puntos oficiales aparecerán aquí una vez se cierre el torneo y se valide el Top 10.</div>`;
+            return;
+        }
+
         const usersSnap = await getDocs(collection(db, "users"));
         let usersMap = {};
         usersSnap.forEach(uDoc => {
@@ -788,44 +838,20 @@ async function cargarRanking() {
             usersMap[uDoc.id] = `${uData.nombre || ''} ${uData.apellido || ''}`.trim() || uDoc.id;
         });
 
-        let playerScoresMap = {};
-        if (state.torneoActual.players) {
-            state.torneoActual.players.forEach(p => {
-                let s = String(p.score || "E").trim().toUpperCase();
-                let val = 0;
-                
-                if (s === "E" || s === "EVEN" || s === "-" || s === "") {
-                    val = 0;
-                } else if (s.startsWith("+")) {
-                    val = -(parseInt(s.replace(/\D/g, "")) || 0) * 5; 
-                } else if (s.startsWith("-")) {
-                    val = (parseInt(s.replace(/\D/g, "")) || 0) * 10; 
-                } else {
-                    let parsed = parseInt(s);
-                    val = isNaN(parsed) ? 0 : parsed;
-                }
-                
-                playerScoresMap[p.id] = val;
-            });
-        }
-
-        const q = query(collection(db, "bets"), where("tournament_id", "==", state.torneoActual.id));
+        const q = query(
+            collection(db, "bets"),
+            where("tournament_id", "==", state.torneoActual.id),
+            where("settled", "==", true)
+        );
         const querySnapshot = await getDocs(q);
 
         let usuariosMap = {};
 
         querySnapshot.forEach((doc) => {
             const bet = doc.data();
-            let basePoints = 0;
-
-            bet.roster.forEach(player => {
-                let puntosJugador = Number(playerScoresMap[player.id]);
-                if (isNaN(puntosJugador)) puntosJugador = 0;
-                basePoints += puntosJugador;
-            });
-
-            let totalPoints = Math.max(10, basePoints * bet.multiplier); 
-            if (isNaN(totalPoints)) totalPoints = 10;
+            // Puntos oficiales, ya validados contra el Top 10 real por la liquidación del admin.
+            // No se recalcula nada aquí — se toma tal cual quedó guardado (fuente única de verdad).
+            let totalPoints = Number(bet.points) || 0;
 
             let userId = bet.user_id;
             let nombreUsuario = usersMap[userId] || bet.user_email.split('@')[0];
@@ -844,7 +870,7 @@ async function cargarRanking() {
         ranking.sort((a, b) => b.points - a.points);
 
         if (ranking.length === 0) {
-            container.innerHTML = `<div class="empty-state">No hay apuestas registradas aún para este torneo.</div>`;
+            container.innerHTML = `<div class="empty-state">No hay apuestas liquidadas todavía para este torneo.</div>`;
             return;
         }
 
