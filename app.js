@@ -93,6 +93,7 @@ onAuthStateChanged(auth, async (user) => {
         await cargarDatosPerfil(user);
         verificarPermisosAdmin(user.email);
         await cargarTorneoDesdeFirestore(); 
+        cargarCalendarioDelMes();
         cargarPremios(user.uid); 
     } else {
         showScreen('login');
@@ -280,6 +281,7 @@ function switchTab(activeTab) {
     if (activeBtn) activeBtn.classList.add('active');
     if (activeContent) activeContent.classList.remove('hidden');
 
+    if (activeTab === 'torneos') cargarCalendarioDelMes();
     if (activeTab === 'apuestas' && auth.currentUser) cargarMisApuestas(auth.currentUser.uid);
     if (activeTab === 'ranking') cargarRanking();
     if (activeTab === 'catalogo' && auth.currentUser) cargarPremios(auth.currentUser.uid);
@@ -375,6 +377,132 @@ document.getElementById('btnSyncDb')?.addEventListener('click', async () => {
         btn.disabled = false;
     }
 });
+
+// =====================================================================
+// --- CALENDARIO DE TORNEOS DEL MES ---
+// Completamente separado del sync del "torneo en curso" de arriba.
+// Esta API (sports.core.api.espn.com) solo nos da fechas y nombres del
+// calendario del PGA Tour — NO tiene el detalle de jugadores/resultados,
+// eso lo sigue trayendo únicamente fetchTorneoDesdeESPN() de arriba.
+// =====================================================================
+const URL_CALENDARIO_ESPN = 'https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/calendar/ondays?lang=en&region=us';
+
+async function fetchCalendarioDelMesESPN() {
+    const response = await fetch(URL_CALENDARIO_ESPN);
+    const data = await response.json();
+
+    // La API de ESPN "core" puede traer la lista en distintos campos según el endpoint.
+    // Probamos varias rutas conocidas en vez de asumir una sola estructura.
+    let entradas = data.calendar || data.eventDate || data.entries || data.items || [];
+
+    if (!Array.isArray(entradas) || entradas.length === 0) {
+        console.error("fetchCalendarioDelMesESPN: no se encontró un arreglo de torneos en la respuesta. Respuesta cruda:", data);
+        throw new Error("La respuesta de ESPN no tuvo el formato esperado (revisa la consola).");
+    }
+
+    const torneos = entradas.map(item => {
+        const id = item.id || null;
+        const nombre = item.label || item.name || item.shortName || "Torneo sin nombre";
+        const detalle = item.detail || null; // ej: "Jan 22-25", útil como respaldo
+        const inicio = item.startDate || null;
+        const fin = item.endDate || null;
+        return { id, nombre, detalle, inicio, fin };
+    }).filter(t => t.inicio); // descartamos cualquier entrada sin fecha válida
+
+    if (torneos.length === 0) {
+        console.error("fetchCalendarioDelMesESPN: se encontraron entradas pero ninguna con fecha reconocible. Revisa esta muestra:", entradas.slice(0, 2));
+        throw new Error("No se pudo leer la fecha de ningún torneo (revisa la consola).");
+    }
+
+    return torneos;
+}
+
+document.getElementById('btnSyncCalendario')?.addEventListener('click', async () => {
+    const btn = document.getElementById('btnSyncCalendario');
+    if (!btn) return;
+    const textoOriginal = btn.textContent;
+    btn.textContent = "📅 Trayendo calendario...";
+    btn.disabled = true;
+
+    try {
+        const torneos = await fetchCalendarioDelMesESPN();
+        await setDoc(doc(db, "calendario", "mes_actual"), {
+            torneos,
+            updated_at: serverTimestamp()
+        });
+        await cargarCalendarioDelMes();
+        mostrarModal("Calendario Actualizado", `Se trajeron ${torneos.length} torneo(s) del calendario oficial.`, "📅");
+    } catch (e) {
+        console.error("Error trayendo el calendario del mes:", e);
+        mostrarModal(
+            "No se pudo traer el calendario",
+            "Revisa la consola (F12) para ver la respuesta cruda de ESPN y avísame — puede que necesite ajustar cómo leo esa API.",
+            "⚠️"
+        );
+    } finally {
+        btn.textContent = textoOriginal;
+        btn.disabled = false;
+    }
+});
+
+async function cargarCalendarioDelMes() {
+    const container = document.getElementById('calendario-torneos-list');
+    if (!container) return;
+
+    try {
+        const snap = await getDoc(doc(db, "calendario", "mes_actual"));
+        if (!snap.exists() || !snap.data().torneos || snap.data().torneos.length === 0) {
+            container.innerHTML = `<div class="empty-state" style="padding:14px; font-size:12px;">Todavía no se ha cargado el calendario del mes.</div>`;
+            return;
+        }
+
+        const torneos = snap.data().torneos;
+        const ahora = new Date();
+
+        // Ordenamos por fecha y nos quedamos con los que ya vienen (hoy en adelante)
+        const conFecha = torneos
+            .map(t => ({ ...t, inicioDate: new Date(t.inicio) }))
+            .filter(t => !isNaN(t.inicioDate))
+            .sort((a, b) => a.inicioDate - b.inicioDate);
+
+        const proximos = conFecha.filter(t => t.inicioDate >= new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1));
+
+        if (proximos.length === 0) {
+            container.innerHTML = `<div class="empty-state" style="padding:14px; font-size:12px;">No hay torneos próximos en el calendario cargado.</div>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        proximos.forEach((t, idx) => {
+            const diffDias = Math.round((t.inicioDate - ahora) / (1000 * 60 * 60 * 24));
+            let etiquetaTiempo;
+            if (diffDias <= 0) etiquetaTiempo = "En curso / hoy";
+            else if (diffDias === 1) etiquetaTiempo = "Empieza mañana";
+            else etiquetaTiempo = `Empieza en ${diffDias} días`;
+
+            const fechaTexto = t.detalle
+                ? t.detalle
+                : t.inicioDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+
+            const div = document.createElement('div');
+            div.className = 'ticket-card';
+            div.style.marginBottom = '10px';
+            div.innerHTML = `
+                <div class="ticket-card-header">
+                    <span>${t.nombre}</span>
+                    ${idx === 0 ? `<span class="badge">${etiquetaTiempo}</span>` : `<span style="font-size:11px; color:var(--texto-gris);">${etiquetaTiempo}</span>`}
+                </div>
+                <div class="ticket-card-body">
+                    <p style="margin:0; font-size:12px;">📅 ${fechaTexto}</p>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    } catch (e) {
+        console.error("Error cargando calendario desde Firestore:", e);
+        container.innerHTML = `<p style="color:var(--rojo-alerta); font-size:12px;">Error cargando el calendario.</p>`;
+    }
+}
 
 async function cargarTorneoDesdeFirestore() {
     try {
