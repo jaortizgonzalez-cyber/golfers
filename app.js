@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, sendPasswordResetEmail, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
 import { getFirestore, doc, setDoc, getDoc, deleteDoc, collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-storage.js";
 
 // ⚠️ PEGA AQUÍ TU firebaseConfig
 const firebaseConfig = {
@@ -17,7 +16,6 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
-const storage = getStorage(app);
 
 // 🔑 CORREO ELECTRÓNICO CONFIGURADO COMO ADMINISTRADOR DE LA APP
 const ADMIN_EMAIL = "jaortizgonzalez@gmail.com"; 
@@ -1167,22 +1165,52 @@ function actualizarPuntosPreview() {
 
 document.getElementById('premio-precio')?.addEventListener('input', actualizarPuntosPreview);
 
+// Comprime y convierte la foto a una imagen pequeña en base64 (texto), para poder guardarla
+// directo en Firestore sin necesitar Firebase Storage (que ahora exige plan de pago Blaze).
+function comprimirImagenAFoto(file, maxAncho = 900, calidad = 0.75) {
+    return new Promise((resolve, reject) => {
+        const lector = new FileReader();
+        lector.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > maxAncho) {
+                    height = Math.round(height * (maxAncho / width));
+                    width = maxAncho;
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', calidad));
+            };
+            img.onerror = () => reject(new Error("No se pudo leer la imagen."));
+            img.src = e.target.result;
+        };
+        lector.onerror = () => reject(new Error("No se pudo leer el archivo."));
+        lector.readAsDataURL(file);
+    });
+}
+
 document.getElementById('premio-imagen-file')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
     const statusEl = document.getElementById('premio-imagen-status');
-    if (statusEl) statusEl.textContent = "Subiendo foto...";
+    if (statusEl) statusEl.textContent = "Procesando foto...";
     try {
-        const path = `premios/${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, path);
-        await uploadBytes(storageRef, file);
-        const url = await getDownloadURL(storageRef);
-        imagenSubidaUrl = url;
-        actualizarPreviewImagenPremio(url);
-        if (statusEl) statusEl.textContent = "✅ Foto subida correctamente.";
+        const dataUrl = await comprimirImagenAFoto(file);
+        // Chequeo de tamaño: Firestore permite máximo ~1MB por documento completo.
+        const pesoKB = Math.round((dataUrl.length * 3 / 4) / 1024);
+        if (pesoKB > 700) {
+            if (statusEl) statusEl.textContent = `⚠️ La foto quedó muy pesada (${pesoKB}KB). Prueba con una foto más simple, de menor resolución, o recórtala antes de subirla.`;
+            return;
+        }
+        imagenSubidaUrl = dataUrl;
+        actualizarPreviewImagenPremio(dataUrl);
+        if (statusEl) statusEl.textContent = `✅ Foto lista (${pesoKB}KB) — se guarda directo en la base de datos, sin costo ni plan pago.`;
     } catch (err) {
-        console.error("Error subiendo imagen:", err);
-        if (statusEl) statusEl.textContent = "❌ No se pudo subir la foto.";
+        console.error("Error procesando imagen:", err);
+        if (statusEl) statusEl.textContent = "❌ No se pudo procesar la foto.";
     }
 });
 
