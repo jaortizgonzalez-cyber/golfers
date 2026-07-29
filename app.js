@@ -560,6 +560,20 @@ async function cargarTorneoDesdeFirestore() {
         const docRef = doc(db, "tournaments", eventId);
         const docSnap = await getDoc(docRef);
 
+        // 🔧 AUTO-REPARACIÓN: si el documento guardado en Firestore es de una sincronización
+        // ANTERIOR a este arreglo, no tendrá el campo 'rango_fechas' (aunque sí pudo haber
+        // quedado con 'startDate'/'detalle_estado' viejos). En vez de mostrar datos obsoletos
+        // hasta que alguien presione manualmente "Sincronizar", lo detectamos aquí y volvemos a
+        // traer/guardar los datos frescos de ESPN automáticamente, una sola vez, de forma silenciosa.
+        if (docSnap.exists() && !docSnap.data().rango_fechas) {
+            console.warn("Documento de torneo desactualizado (sin rango_fechas) — resincronizando con ESPN...");
+            const torneoFresco = await fetchTorneoDesdeESPN();
+            await setDoc(docRef, torneoFresco);
+            state.torneoActual = torneoFresco;
+            actualizarUIەTorneo();
+            return;
+        }
+
         if (docSnap.exists()) {
             state.torneoActual = docSnap.data();
             actualizarUIەTorneo();
@@ -587,9 +601,15 @@ function actualizarUIەTorneo() {
     if (state.torneoActual.rango_fechas) {
         document.getElementById('torneo-inicio').textContent = "📅 Fechas oficiales: " + state.torneoActual.rango_fechas;
     } else if (state.torneoActual.startDate) {
-        // Respaldo por si ESPN no trajo el texto oficial: mostramos solo el DÍA (sin hora).
+        // Respaldo por si ESPN no trajo el texto oficial (rango_fechas). Usamos timeZone:'UTC'
+        // para leer el día TAL COMO lo entrega ESPN (ej. "2026-07-30T04:00Z" = 30 de julio).
+        // 🐛 BUG CORREGIDO: antes se formateaba en la zona horaria LOCAL del navegador, lo cual
+        // restaba horas y hacía que el día se recorriera un día atrás (ej. mostraba "29 de julio"
+        // en vez de "30 de julio", y por eso parecía que el torneo empezaba "hoy" en vez de mañana).
         const fechaSoloDia = new Date(state.torneoActual.startDate);
-        document.getElementById('torneo-inicio').textContent = "📅 Inicia: " + fechaSoloDia.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
+        document.getElementById('torneo-inicio').textContent = "📅 Inicia: " + fechaSoloDia.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+    } else {
+        document.getElementById('torneo-inicio').textContent = "";
     }
 
     if (state.torneoActual.startDate) {
