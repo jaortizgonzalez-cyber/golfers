@@ -391,12 +391,12 @@ async function fetchCalendarioDelMesESPN() {
     const response = await fetch(URL_CALENDARIO_ESPN);
     const data = await response.json();
 
-    // La API de ESPN "core" puede traer la lista en distintos campos según el endpoint.
-    // Probamos varias rutas conocidas en vez de asumir una sola estructura.
-    let entradas = data.calendar || data.eventDate || data.entries || data.items || [];
+    // Confirmado con datos reales de ESPN: el arreglo de torneos viene en "sections".
+    let entradas = data.sections || data.calendar || data.entries || data.items || [];
 
     if (!Array.isArray(entradas) || entradas.length === 0) {
-        console.error("fetchCalendarioDelMesESPN: no se encontró un arreglo de torneos en la respuesta. Respuesta cruda:", data);
+        console.error("fetchCalendarioDelMesESPN: no se encontró un arreglo de torneos en la respuesta. Respuesta cruda COMPLETA (cópiala toda):");
+        console.error(JSON.stringify(data, null, 2));
         throw new Error("La respuesta de ESPN no tuvo el formato esperado (revisa la consola).");
     }
 
