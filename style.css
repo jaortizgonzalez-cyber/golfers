@@ -95,6 +95,8 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
     background: var(--verde-fairway); color: var(--dorado-suave);
     display: flex; align-items: center; justify-content: center; font-size: 16px;
     border: 1px solid var(--dorado); flex-shrink: 0;
+    /* 🖼️ Ahora es una <img> (logo real), no un emoji: recorte limpio y centrado dentro del círculo */
+    object-fit: cover; object-position: center; padding: 0;
 }
 .brand-name {
     font-family: 'Playfair Display', serif; font-weight: 700; font-size: 17px;
@@ -224,7 +226,8 @@ button {
 .btn-seed { background: var(--dorado-suave); border: 1px solid var(--dorado); color: #5A4718; font-size: 12px; }
 button:disabled { background-color: #EDEAE0; color: #B3AB9B; cursor: not-allowed; border-color: #EDEAE0; }
 
-.logo-circle { background-color: var(--verde-fairway); color: var(--dorado-suave); width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 20px auto; border: 1px solid var(--dorado); }
+.logo-circle { background-color: var(--verde-fairway); color: var(--dorado-suave); width: 52px; height: 52px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; margin: 0 auto 20px auto; border: 1px solid var(--dorado); overflow: hidden; }
+.logo-circle img { width: 100%; height: 100%; object-fit: cover; object-position: center; display: block; }
 
 /* -----------------------------------------
    TORNEOS
