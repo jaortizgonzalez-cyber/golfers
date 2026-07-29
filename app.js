@@ -316,6 +316,7 @@ async function fetchTorneoDesdeESPN() {
     const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
     const data = await response.json();
     const event = data.events[0];
+    const compStatus = event.competitions && event.competitions[0] && event.competitions[0].status;
 
     const torneoData = {
         id: event.id,
@@ -323,13 +324,17 @@ async function fetchTorneoDesdeESPN() {
         course: event.courses ? event.courses[0].name : "PGA Tour Course",
         startDate: event.date,
         status: "ACTIVE",
+        // Estado REAL del torneo según ESPN: 'pre' (no ha empezado), 'in' (en vivo), 'post' (terminó).
+        // Esto es lo que usamos para decidir si mostramos el punto verde de "en vivo" o no.
+        estado_vivo: (compStatus && compStatus.type && compStatus.type.state) || 'pre',
+        detalle_estado: (compStatus && compStatus.type && (compStatus.type.detail || compStatus.type.shortDetail)) || null,
         updated_at: serverTimestamp(),
         players: []
     };
 
     const competitors = event.competitions[0].competitors;
     competitors.forEach((comp) => {
-        let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : 'https://a.espncdn.com/i/headshots/golf/players/full/default.png';
+        let photoUrl = (comp.athlete && comp.athlete.headshot && comp.athlete.headshot.href) ? comp.athlete.headshot.href : null;
 
         let rawScore = comp.score;
         let displayScore = "E";
@@ -458,46 +463,76 @@ async function cargarCalendarioDelMes() {
 
         const torneos = snap.data().torneos;
         const ahora = new Date();
+        // Normalizamos a medianoche LOCAL para comparar por día calendario, no por hora exacta
+        // (antes esto hacía que dijera "mañana" cuando en realidad faltaban 2 días).
+        const hoySinHora = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
 
-        // Ordenamos por fecha y nos quedamos con los que ya vienen (hoy en adelante)
         const conFecha = torneos
             .map(t => ({ ...t, inicioDate: new Date(t.inicio) }))
             .filter(t => !isNaN(t.inicioDate))
             .sort((a, b) => a.inicioDate - b.inicioDate);
 
-        const proximos = conFecha.filter(t => t.inicioDate >= new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate() - 1));
+        const proximos = conFecha.filter(t => {
+            const inicioSinHora = new Date(t.inicioDate.getFullYear(), t.inicioDate.getMonth(), t.inicioDate.getDate());
+            return inicioSinHora >= hoySinHora;
+        });
 
         if (proximos.length === 0) {
             container.innerHTML = `<div class="empty-state" style="padding:14px; font-size:12px;">No hay torneos próximos en el calendario cargado.</div>`;
             return;
         }
 
-        container.innerHTML = '';
-        proximos.forEach((t, idx) => {
-            const diffDias = Math.round((t.inicioDate - ahora) / (1000 * 60 * 60 * 24));
-            let etiquetaTiempo;
-            if (diffDias <= 0) etiquetaTiempo = "En curso / hoy";
-            else if (diffDias === 1) etiquetaTiempo = "Empieza mañana";
-            else etiquetaTiempo = `Empieza en ${diffDias} días`;
+        const calcularEtiqueta = (inicioDate) => {
+            const inicioSinHora = new Date(inicioDate.getFullYear(), inicioDate.getMonth(), inicioDate.getDate());
+            const diffDias = Math.round((inicioSinHora - hoySinHora) / (1000 * 60 * 60 * 24));
+            if (diffDias <= 0) return "En curso / hoy";
+            if (diffDias === 1) return "Empieza mañana";
+            return `Empieza en ${diffDias} días`;
+        };
+        const fechaLarga = (t) => t.detalle || t.inicioDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
 
-            const fechaTexto = t.detalle
-                ? t.detalle
-                : t.inicioDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
-
-            const div = document.createElement('div');
-            div.className = 'ticket-card';
-            div.style.marginBottom = '10px';
-            div.innerHTML = `
+        const tarjetaTorneo = (t, destacado) => `
+            <div class="ticket-card ${destacado ? 'torneo-destacado' : ''}" style="margin-bottom:10px;">
                 <div class="ticket-card-header">
                     <span>${t.nombre}</span>
-                    ${idx === 0 ? `<span class="badge">${etiquetaTiempo}</span>` : `<span style="font-size:11px; color:var(--texto-gris);">${etiquetaTiempo}</span>`}
+                    ${destacado ? `<span class="badge">${calcularEtiqueta(t.inicioDate)}</span>` : `<span style="font-size:11px; color:var(--texto-gris);">${calcularEtiqueta(t.inicioDate)}</span>`}
                 </div>
                 <div class="ticket-card-body">
-                    <p style="margin:0; font-size:12px;">📅 ${fechaTexto}</p>
+                    <p style="margin:0; font-size:12px;">📅 ${fechaLarga(t)}</p>
                 </div>
+            </div>
+        `;
+
+        const masProximo = proximos[0];
+        const mesDelProximo = masProximo.inicioDate.getMonth();
+        const anioDelProximo = masProximo.inicioDate.getFullYear();
+
+        const restoDelMes = proximos.slice(1).filter(t =>
+            t.inicioDate.getMonth() === mesDelProximo && t.inicioDate.getFullYear() === anioDelProximo
+        );
+        const restoDelAnio = proximos.slice(1).filter(t =>
+            !(t.inicioDate.getMonth() === mesDelProximo && t.inicioDate.getFullYear() === anioDelProximo)
+        );
+
+        let html = tarjetaTorneo(masProximo, true);
+
+        if (restoDelMes.length > 0) {
+            html += `<div style="font-size:11px; color:var(--texto-gris); text-transform:uppercase; letter-spacing:0.4px; margin:14px 0 8px;">Resto del mes</div>`;
+            restoDelMes.forEach(t => { html += tarjetaTorneo(t, false); });
+        }
+
+        if (restoDelAnio.length > 0) {
+            html += `
+                <details class="rule-accordion" style="margin-top:10px;">
+                    <summary><span class="rule-icon-mini">📆</span> Ver el resto del año (${restoDelAnio.length} torneos)</summary>
+                    <div class="rule-body-content" style="padding-left:0;">
+                        ${restoDelAnio.map(t => tarjetaTorneo(t, false)).join('')}
+                    </div>
+                </details>
             `;
-            container.appendChild(div);
-        });
+        }
+
+        container.innerHTML = html;
     } catch (e) {
         console.error("Error cargando calendario desde Firestore:", e);
         container.innerHTML = `<p style="color:var(--rojo-alerta); font-size:12px;">Error cargando el calendario.</p>`;
@@ -554,6 +589,30 @@ function actualizarUIەTorneo() {
         badge.className = "badge";
         btnInscripcion.disabled = false;
         btnInscripcion.textContent = "Elegir equipo e inscribirme";
+    }
+
+    // Indicador de EN VIVO real (no un punto rojo fijo): solo se enciende verde si
+    // ESPN reporta el torneo como realmente en juego ('in'). Si todavía no arranca
+    // ('pre') mostramos un estado neutral con la fecha; si ya terminó ('post'), otro.
+    const dot = document.getElementById('torneo-live-dot');
+    const label = document.getElementById('torneo-live-label');
+    if (dot && label) {
+        const estado = state.torneoActual.estado_vivo || 'pre';
+        if (estado === 'in') {
+            dot.className = 'live-dot';
+            label.textContent = 'En vivo ahora';
+            label.style.color = 'var(--verde-fairway)';
+        } else if (estado === 'post') {
+            dot.className = 'pending-dot';
+            label.textContent = 'Terminado, pendiente de liquidar';
+            label.style.color = 'var(--texto-gris)';
+        } else {
+            dot.className = 'pending-dot';
+            label.textContent = state.torneoActual.detalle_estado
+                ? `Comienza: ${state.torneoActual.detalle_estado}`
+                : 'Aún no comienza';
+            label.style.color = 'var(--texto-gris)';
+        }
     }
 }
 
@@ -657,7 +716,11 @@ async function iniciarEdicionTicket(ticketId) {
         state.referenciaExistente = betData.payment_reference || '';
 
         document.getElementById('roster-title').textContent = "Modifica tu equipo";
+        filtroJugadorActual = '';
+        const searchInputEl = document.getElementById('player-search-input');
+        if (searchInputEl) searchInputEl.value = '';
         renderizarJugadores();
+        renderRosterChips();
         actualizarEstadoBotonRoster();
         showScreen('roster');
     }
@@ -1125,7 +1188,13 @@ async function cargarPremios(userId) {
                         ? `<img src="${item.imagen}" alt="${item.nombre}" onerror="this.style.display='none'; this.parentElement.querySelector('.reward-photo-fallback').style.display='flex';">`
                         : ''
                     }
-                    <div class="reward-photo-fallback" style="${tieneImagenValida ? 'display:none;' : ''}">${item.icono_respaldo || '🎁'}</div>
+                    <div class="reward-photo-fallback" style="${tieneImagenValida ? 'display:none;' : ''}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M9 3v18"/>
+                            <path d="M9 4l10 4.2L9 12.4"/>
+                            <ellipse cx="9" cy="21.2" rx="5" ry="1.1"/>
+                        </svg>
+                    </div>
                     <span class="reward-tier-badge ${item.tier || 'bronce'}">${item.tier || 'bronce'}</span>
                     ${!alcanzado ? `<span class="reward-lock-badge">🔒</span>` : ''}
                 </div>
@@ -1249,7 +1318,6 @@ function cargarPremioEnFormulario(item) {
     document.getElementById('premio-nombre').value = item.nombre || '';
     document.getElementById('premio-precio').value = item.precio_real || '';
     document.getElementById('premio-tier').value = item.tier || 'bronce';
-    document.getElementById('premio-icono').value = item.icono_respaldo || '';
     actualizarPreviewImagenPremio(item.imagen || null);
     actualizarPuntosPreview();
     document.getElementById('btnCancelarEdicionPremio').classList.remove('hidden');
@@ -1263,7 +1331,6 @@ function limpiarFormularioPremio() {
     document.getElementById('premio-nombre').value = '';
     document.getElementById('premio-precio').value = '';
     document.getElementById('premio-tier').value = 'bronce';
-    document.getElementById('premio-icono').value = '';
     document.getElementById('premio-imagen-file').value = '';
     actualizarPreviewImagenPremio(null);
     actualizarPuntosPreview();
@@ -1362,7 +1429,6 @@ document.getElementById('btnGuardarPremio')?.addEventListener('click', async () 
     const nombre = document.getElementById('premio-nombre').value.trim();
     const precio = Number(document.getElementById('premio-precio').value);
     const tier = document.getElementById('premio-tier').value;
-    const icono = document.getElementById('premio-icono').value.trim() || '🎁';
 
     if (!nombre || !precio || precio <= 0) {
         mostrarModal("Datos Incompletos", "Ponle un nombre y un precio real válido al premio.", "⚠️");
@@ -1373,7 +1439,6 @@ document.getElementById('btnGuardarPremio')?.addEventListener('click', async () 
         nombre,
         precio_real: precio,
         tier,
-        icono_respaldo: icono,
         imagen: imagenSubidaUrl || null,
         updated_at: serverTimestamp()
     };
@@ -1418,59 +1483,125 @@ document.getElementById('btnSiguientePago').addEventListener('click', () => {
     }
     state.jugadoresSeleccionados = []; 
     document.getElementById('roster-title').textContent = "Arma tu equipo";
+    filtroJugadorActual = '';
+    const searchInputEl2 = document.getElementById('player-search-input');
+    if (searchInputEl2) searchInputEl2.value = '';
     renderizarJugadores(); 
+    renderRosterChips();
     actualizarEstadoBotonRoster(); 
     showScreen('roster');
 });
 
+let filtroJugadorActual = '';
+
 function renderizarJugadores() {
     const listContainer = document.getElementById('player-list');
-    listContainer.innerHTML = ''; 
-    
+    listContainer.innerHTML = '';
+
     if (!state.torneoActual || !state.torneoActual.players) return;
 
-    const jugadoresOrdenados = [...state.torneoActual.players].sort((a, b) => 
-        a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
-    );
+    const termino = filtroJugadorActual.trim().toLowerCase();
+
+    const jugadoresOrdenados = [...state.torneoActual.players]
+        .filter(p => !termino || p.name.toLowerCase().includes(termino))
+        .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+
+    if (jugadoresOrdenados.length === 0) {
+        listContainer.innerHTML = `<div class="empty-state" style="padding:16px; font-size:12px;">No hay jugadores que coincidan con "${filtroJugadorActual}".</div>`;
+        return;
+    }
 
     jugadoresOrdenados.forEach(player => {
         const div = document.createElement('div');
         div.className = 'player-item';
-        
+
         const yaSeleccionado = state.jugadoresSeleccionados.some(p => p.id === player.id);
         if (yaSeleccionado) {
             div.classList.add('selected');
         }
 
+        const tieneFoto = !!player.photo;
         div.innerHTML = `
             <div class="player-info-container">
-                <img src="${player.photo}" alt="${player.name}" class="player-photo" onerror="this.src='https://a.espncdn.com/i/headshots/golf/players/full/default.png'">
+                <div class="player-photo-wrap">
+                    ${tieneFoto
+                        ? `<img src="${player.photo}" alt="${player.name}" class="player-photo" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">`
+                        : ''
+                    }
+                    <div class="player-photo-fallback" style="${tieneFoto ? 'display:none;' : ''}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="8" r="3.2"/>
+                            <path d="M5.5 20c0-3.6 2.9-6 6.5-6s6.5 2.4 6.5 6"/>
+                        </svg>
+                    </div>
+                </div>
                 <div>
                     <span class="player-name">${player.name}</span>
                     <span class="player-score">Score: <strong>${player.score}</strong></span>
                 </div>
             </div>
         `;
-        
+
         div.addEventListener('click', () => {
             const index = state.jugadoresSeleccionados.findIndex(p => p.id === player.id);
-            
+
             if (index > -1) {
+                // Ya estaba en el equipo -> lo quitamos
                 state.jugadoresSeleccionados.splice(index, 1);
-                div.classList.remove('selected');
+            } else if (state.jugadoresSeleccionados.length < state.cuposTotales) {
+                // Hay cupo libre -> lo agregamos directo
+                state.jugadoresSeleccionados.push(player);
+            } else if (state.cuposTotales === 1) {
+                // Solo puede tener 1 jugador -> con tocar otro simplemente lo reemplaza
+                state.jugadoresSeleccionados = [player];
             } else {
-                if (state.jugadoresSeleccionados.length < state.cuposTotales) {
-                    state.jugadoresSeleccionados.push(player);
-                    div.classList.add('selected');
-                } else {
-                    mostrarModal("Límite de Cupos", `Ya tienes el máximo de ${state.cuposTotales} jugador(es).`, "⚠️");
-                }
+                // Equipo lleno con más de 1 cupo -> reemplaza el ÚLTIMO que había elegido,
+                // así el usuario puede simplemente ir tocando nuevos jugadores sin tener
+                // que ir a buscar manualmente a quién desmarcar primero.
+                state.jugadoresSeleccionados.pop();
+                state.jugadoresSeleccionados.push(player);
             }
+
+            renderizarJugadores();
+            renderRosterChips();
             actualizarEstadoBotonRoster();
         });
         listContainer.appendChild(div);
     });
 }
+
+function renderRosterChips() {
+    const box = document.getElementById('roster-chips-box');
+    const list = document.getElementById('roster-chips-list');
+    if (!box || !list) return;
+
+    if (state.jugadoresSeleccionados.length === 0) {
+        box.classList.add('hidden');
+        list.innerHTML = '';
+        return;
+    }
+
+    box.classList.remove('hidden');
+    list.innerHTML = '';
+    state.jugadoresSeleccionados.forEach(player => {
+        const chip = document.createElement('span');
+        chip.className = 'roster-chip';
+        chip.innerHTML = `${player.name} <button type="button" class="roster-chip-remove" aria-label="Quitar">×</button>`;
+        chip.querySelector('.roster-chip-remove').addEventListener('click', () => {
+            const index = state.jugadoresSeleccionados.findIndex(p => p.id === player.id);
+            if (index > -1) state.jugadoresSeleccionados.splice(index, 1);
+            renderizarJugadores();
+            renderRosterChips();
+            actualizarEstadoBotonRoster();
+        });
+        list.appendChild(chip);
+    });
+}
+
+document.getElementById('player-search-input')?.addEventListener('input', (e) => {
+    filtroJugadorActual = e.target.value;
+    renderizarJugadores();
+});
 
 function actualizarEstadoBotonRoster() {
     const faltantes = state.cuposTotales - state.jugadoresSeleccionados.length;
@@ -1538,6 +1669,8 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
                 roster: state.jugadoresSeleccionados,
                 payment_status: "PENDIENTE", 
                 payment_reference: referencia,
+                points: 0,
+                settled: false,
                 created_at: serverTimestamp()
             });
             document.getElementById('success-tx-id').textContent = docRef.id;
