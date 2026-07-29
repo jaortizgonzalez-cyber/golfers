@@ -48,11 +48,24 @@
     <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
     <div id="lobby-screen" class="card hidden">
 
-        <!-- ENCABEZADO: logo + menú desktop / hamburguesa móvil + usuario -->
+        <!-- ENCABEZADO: fila superior (logo + usuario) y fila de menú debajo -->
         <div class="app-header">
-            <div class="brand">
-                <span class="brand-mark">⛳</span>
-                <span class="brand-name">Copa Fairway</span>
+            <div class="header-top-row">
+                <div class="brand">
+                    <span class="brand-mark">⛳</span>
+                    <span class="brand-name">Copa Fairway</span>
+                </div>
+
+                <div class="user-box">
+                    <div class="user-greeting-box">
+                        <span class="welcome-text">Bienvenido,</span>
+                        <span id="user-name-display" class="user-name-text">Jugador</span>
+                    </div>
+                    <button id="btnLogout" class="btn-logout-link">Cerrar sesión</button>
+                    <button id="btnHamburger" class="hamburger-btn" aria-label="Abrir menú">
+                        <span></span><span></span><span></span>
+                    </button>
+                </div>
             </div>
 
             <nav class="nav-tabs" id="main-nav-tabs">
@@ -64,17 +77,6 @@
                 <button class="tab-btn" id="tab-catalogo">Premios</button>
                 <!-- Botón Admin inyectado dinámicamente si es administrador -->
             </nav>
-
-            <div class="user-box">
-                <div class="user-greeting-box">
-                    <span class="welcome-text">Bienvenido,</span>
-                    <span id="user-name-display" class="user-name-text">Jugador</span>
-                </div>
-                <button id="btnLogout" class="btn-logout-link">Cerrar sesión</button>
-                <button id="btnHamburger" class="hamburger-btn" aria-label="Abrir menú">
-                    <span></span><span></span><span></span>
-                </button>
-            </div>
         </div>
         <div id="mobileMenuOverlay" class="mobile-menu-overlay"></div>
 
