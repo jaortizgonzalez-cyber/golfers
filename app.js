@@ -56,14 +56,17 @@ function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     
     const btn = document.getElementById('modal-btn-action');
     const nuevoBtn = btn.cloneNode(true);
-    // 🔧 FIX: siempre resetear a estado "simple" (un solo botón, texto por defecto)
+    // 🔧 FIX: mostrarModal() SIEMPRE resetea el modal a su estado "simple" (un solo botón,
+    // texto por defecto "Entendido", sin la clase roja de peligro). Antes, si este modal se
+    // abría justo después de una confirmación (mostrarConfirmacion), heredaba visualmente el
+    // texto "Sí, eliminar" y el botón "Cancelar" que había quedado de esa confirmación anterior
+    // — por eso, tras confirmar un borrado, el modal de éxito seguía mostrando "Sí, eliminar".
     nuevoBtn.textContent = "Entendido";
     nuevoBtn.classList.remove('btn-danger');
     btn.parentNode.replaceChild(nuevoBtn, btn);
 
-    // 🔧 FIX: siempre ocultar "Cancelar" al usar el modal simple de aviso
     const btnCancel = document.getElementById('modal-btn-cancel');
-    btnCancel.classList.add('hidden');
+    if (btnCancel) btnCancel.classList.add('hidden');
     
     nuevoBtn.addEventListener('click', () => {
         modal.classList.add('hidden');
@@ -695,9 +698,12 @@ function actualizarUIەTorneo() {
             label.style.color = 'var(--texto-gris)';
         } else {
             dot.className = 'pending-dot';
-            label.textContent = state.torneoActual.detalle_estado
-                ? `Comienza: ${state.torneoActual.detalle_estado}`
-                : 'Aún no comienza';
+            // 🔧 AJUSTE: ya no repetimos aquí el rango de fechas del torneo (ej. "Comienza:
+            // July 30 - August 2"), porque esa misma información ya se muestra justo debajo,
+            // dentro de la tarjeta del torneo ("📅 Fechas oficiales: ..."). Repetirla dos veces
+            // en la misma pantalla era redundante, así que este subtítulo ahora solo indica el
+            // ESTADO (aún no comienza / en vivo / terminado), sin duplicar la fecha.
+            label.textContent = 'Aún no comienza';
             label.style.color = 'var(--texto-gris)';
         }
     }
