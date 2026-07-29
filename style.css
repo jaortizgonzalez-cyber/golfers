@@ -335,11 +335,9 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--dorado); 
 .reward-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(18,59,44,0.14); }
 
 .reward-photo-wrap {
-    position: relative; width: 100%; height: 190px;
-    background: linear-gradient(135deg, var(--verde-fairway), var(--verde-oscuro));
-    overflow: hidden;
+    position: relative; width: 100%; min-height: 140px; overflow: hidden;
 }
-.reward-photo-wrap img { width: 100%; height: 100%; object-fit: contain; padding: 10px; box-sizing: border-box; display: block; transition: filter 0.3s; }
+.reward-photo-wrap img { width: 100%; height: auto; display: block; transition: filter 0.3s; }
 .reward-photo-wrap.locked img { filter: grayscale(60%) brightness(0.72); }
 .reward-photo-fallback {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
