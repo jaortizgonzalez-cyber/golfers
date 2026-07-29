@@ -56,6 +56,10 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
 .modal-card { background: var(--blanco); padding: 32px 28px; border-radius: 14px; width: 90%; max-width: 360px; text-align: center; box-shadow: 0 24px 48px rgba(0,0,0,0.22); animation: scaleUp 0.2s ease-in-out; border-top: 3px solid var(--dorado); }
 .modal-icon { font-size: 34px; margin-bottom: 14px; }
 .modal-msg { color: var(--texto-gris); font-size: 14px; line-height: 1.55; margin-bottom: 24px; }
+.modal-actions-row { display: flex; gap: 10px; }
+.modal-actions-row button { margin-bottom: 0; flex: 1; }
+.modal-actions-row .btn-primary.btn-danger { background-color: var(--rojo-alerta); border-color: var(--rojo-alerta); }
+.modal-actions-row .btn-primary.btn-danger:hover { background-color: #8a3526; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 @keyframes scaleUp { from { transform: scale(0.96); } to { transform: scale(1); } }
 
@@ -298,6 +302,10 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--dorado); 
 .ticket-card.torneo-destacado { border: 1.5px solid var(--dorado); box-shadow: 0 4px 14px rgba(183,151,63,0.18); }
 .ticket-card-header { display: flex; justify-content: space-between; border-bottom: 1px solid var(--borde-suave); padding-bottom: 10px; margin-bottom: 10px; font-size: 14px; font-weight: 600; }
 .ticket-card-body { font-size: 13px; color: var(--texto-gris); margin-bottom: 10px; }
+.ticket-card-actions-row { display: flex; gap: 8px; }
+.ticket-card-actions-row button { flex: 1; width: auto; margin-bottom: 0; }
+.ticket-card-actions-row .btn-danger-outline { color: var(--rojo-alerta); border-color: var(--rojo-alerta); }
+.ticket-card-actions-row .btn-danger-outline:hover { background-color: rgba(166,64,47,0.06); }
 .ticket-card-body strong { color: var(--texto-oscuro); }
 .empty-state { text-align: center; padding: 40px 20px; background: var(--bg-crema); border-radius: 12px; border: 1px dashed var(--borde-suave); color: var(--texto-oscuro); font-size: 13px; }
 
