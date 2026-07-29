@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Birdie — Elige tu estrategia. Juega. Diviértete. Gana.</title>
+    <title>Elige tu estrategia. Juega. Diviértete. Gana.</title>
 
     <link rel="icon" href="data:,">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -26,8 +26,8 @@
     <!-- 1. LOGIN / REGISTRO / RECUPERACIÓN -->
     <div id="login-screen" class="card text-center">
         <div class="logo-circle">⛳</div>
-        <h1 id="auth-title">Birdie</h1>
-        <p id="auth-subtitle" class="subtitle">Elige tu estrategia. Juega. Diviértete. Gana.</p>
+        <h1 id="auth-title" style="font-size: 24px; line-height: 1.3;">Elige tu estrategia. Juega. Diviértete. Gana.</h1>
+        <p id="auth-subtitle" class="subtitle">Torneos de golf entre amigos — acceso exclusivo del grupo.</p>
 
         <div id="register-fields" class="hidden">
             <input type="text" id="reg-nombre" placeholder="Nombre">
@@ -53,7 +53,6 @@
             <div class="header-top-row">
                 <div class="brand">
                     <span class="brand-mark">⛳</span>
-                    <span class="brand-name">Birdie</span>
                 </div>
 
                 <div class="user-box">
@@ -181,19 +180,32 @@
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">📊</span> 4. Cómo se calculan tus puntos</summary>
                     <div class="rule-body-content">
-                        <p>Cada jugador de tu equipo tiene un puntaje en vivo según su posición respecto al par del campo: par (E) = 0 puntos, cada golpe bajo par suma puntos, cada golpe sobre par resta.</p>
-                        <p>Se suman los puntajes de todos los jugadores de tu equipo → eso es tu <strong>puntaje base</strong>.</p>
-                        <p><strong>Tus puntos finales = puntaje base × tu multiplicador.</strong></p>
-                        <p>Sin importar qué tan mal les vaya a tus jugadores, siempre recibes un mínimo de <span class="rule-highlight">10 puntos</span> por cada apuesta confirmada.</p>
-                        <p>Los puntos se recalculan cada vez que el administrador sincroniza el torneo con los datos oficiales del PGA Tour — no son instantáneos en tiempo real, dependen de esa sincronización.</p>
+                        <p><strong>Los puntos NO se entregan mientras el torneo está en curso.</strong> Solo se calculan y se asignan en el momento en que el administrador <strong>liquida oficialmente el torneo</strong>, usando el resultado final real del PGA Tour.</p>
+                        <p>Al liquidar, solo suman puntos los jugadores de tu equipo que hayan terminado en el <span class="rule-highlight">Top 10 oficial</span> del torneo. Si tu jugador quedó de puesto 11 en adelante (o no jugó el corte), ese jugador aporta <strong>0 puntos</strong> — sin excepción.</p>
+                        <p>Tabla de puntos según posición final:</p>
+                        <ul>
+                            <li>1º lugar → 100 pts</li>
+                            <li>2º lugar → 80 pts</li>
+                            <li>3º lugar → 65 pts</li>
+                            <li>4º lugar → 55 pts</li>
+                            <li>5º lugar → 50 pts</li>
+                            <li>6º lugar → 45 pts</li>
+                            <li>7º lugar → 40 pts</li>
+                            <li>8º lugar → 38 pts</li>
+                            <li>9º lugar → 36 pts</li>
+                            <li>10º lugar → 34 pts</li>
+                            <li>Puesto 11 en adelante → 0 pts</li>
+                        </ul>
+                        <p>Se suman los puntos de todos los jugadores de tu equipo que sí quedaron en el Top 10 → eso es tu <strong>puntaje base</strong>. Tus puntos finales de esa apuesta = puntaje base × tu multiplicador (según lo que apostaste).</p>
+                        <p>Una vez el torneo queda liquidado, tus puntos de esa apuesta quedan fijos para siempre — no cambian después, aunque el torneo se vuelva a sincronizar por error.</p>
                     </div>
                 </details>
 
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">🏆</span> 5. Clasificación y acumulado de puntos</summary>
                     <div class="rule-body-content">
-                        <p>El <strong>Leaderboard</strong> muestra, para el torneo activo, el mejor puntaje de cada participante en tiempo real (según la última sincronización).</p>
-                        <p>Tus <strong>Puntos Acumulados</strong> (pestaña Premios) suman los puntos de <strong>todas</strong> tus apuestas con pago confirmado, en todos los torneos en los que has participado. Entre más torneos juegues, más rápido acumulas para los premios.</p>
+                        <p>El <strong>Leaderboard</strong> muestra el puntaje en vivo/provisional del torneo activo, calculado con el score actual de los jugadores — es solo para seguir la emoción mientras se juega, todavía no es oficial.</p>
+                        <p>Tus <strong>Puntos Acumulados</strong> (pestaña Premios) son los únicos oficiales: solo suman cuando un torneo ya fue <strong>liquidado</strong> por el administrador y se validó el Top 10 de cada jugador. Mientras un torneo siga en curso, esa apuesta aporta <strong>0 puntos acumulados</strong> — así debe ser.</p>
                     </div>
                 </details>
 
@@ -218,7 +230,7 @@
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">⚖️</span> 8. Juego responsable y condiciones del grupo</summary>
                     <div class="rule-body-content">
-                        <p>Birdie es un juego <strong>privado entre un grupo cerrado de conocidos</strong>, no una casa de apuestas pública ni un producto comercial abierto al público.</p>
+                        <p>Este es un juego <strong>privado entre un grupo cerrado de conocidos</strong>, no una casa de apuestas pública ni un producto comercial abierto al público.</p>
                         <p>Apuesta únicamente dinero que estés dispuesto a perder. Esto es para divertirse entre amigos, no es una inversión ni una fuente de ingresos garantizada.</p>
                         <p>Debes ser mayor de edad para participar.</p>
                         <p>Las decisiones del administrador sobre resultados, confirmación de pagos y aprobación de premios son definitivas dentro del grupo.</p>
@@ -288,8 +300,56 @@
             </div>
 
             <div style="margin-top: 20px;">
-                <h3 style="font-size: 15px; margin-bottom: 10px; font-family:'Playfair Display',serif;">Premios por Entregar (Amazon / Envíos)</h3>
+                <h3 style="font-size: 15px; margin-bottom: 10px; font-family:'Playfair Display',serif;">Premios por Entregar (reclamos aprobados)</h3>
                 <div id="admin-premios-list" class="tickets-container" style="max-height: 220px;"></div>
+            </div>
+
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 2px solid var(--borde-suave);">
+                <h3 style="font-size: 16px; margin-bottom: 4px; font-family:'Playfair Display',serif;">🎁 Gestión del Catálogo de Premios</h3>
+                <p class="subtitle-small" style="margin-bottom:14px;">Agrega, edita o elimina premios — todo desde aquí, sin tocar la base de datos.</p>
+
+                <div style="background: var(--bg-crema); border: 1px solid var(--borde-suave); border-radius: 10px; padding: 14px; margin-bottom: 18px;">
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:6px;">Tasa de cambio: pesos reales por cada punto</label>
+                    <div style="display:flex; gap:8px; align-items:center;">
+                        <input type="number" id="admin-tasa-puntos" placeholder="45" style="margin-bottom:0;">
+                        <button id="btnGuardarTasaPuntos" class="btn-primary btn-small" style="width:auto; white-space:nowrap; margin-bottom:0;">Guardar</button>
+                    </div>
+                    <p style="font-size: 11px; color: var(--texto-gris); margin: 8px 0 0;">Los puntos requeridos de TODOS los premios se recalculan solos con este número (precio real ÷ esta tasa).</p>
+                </div>
+
+                <div id="premio-form-box" style="background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+                    <h4 id="premio-form-titulo" style="font-family:'Playfair Display',serif; font-size: 14px; margin: 0 0 12px;">Agregar nuevo premio</h4>
+
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Nombre del premio</label>
+                    <input type="text" id="premio-nombre" placeholder="Ej: Guante de Golf FootJoy WeatherSof">
+
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Precio real de mercado (COP)</label>
+                    <input type="number" id="premio-precio" placeholder="Ej: 89000">
+                    <p id="premio-puntos-preview" style="font-size: 12px; color: var(--dorado); font-weight: 700; margin: -8px 0 12px;"></p>
+
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Nivel</label>
+                    <select id="premio-tier" style="width:100%; padding:13px 14px; margin-bottom:14px; border:1px solid var(--borde-suave); border-radius:8px; font-size:14.5px; font-family:'Inter',sans-serif; background:var(--blanco); color:var(--texto-oscuro);">
+                        <option value="bronce">Bronce</option>
+                        <option value="plata">Plata</option>
+                        <option value="oro">Oro</option>
+                    </select>
+
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Ícono de respaldo (emoji, se usa si la foto no carga)</label>
+                    <input type="text" id="premio-icono" placeholder="🧤" maxlength="4">
+
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Foto real del producto</label>
+                    <input type="file" id="premio-imagen-file" accept="image/*">
+                    <p id="premio-imagen-status" style="font-size: 11px; color: var(--texto-gris); margin: 4px 0 10px;"></p>
+                    <img id="premio-imagen-preview" class="hidden" style="width:100%; max-height:160px; object-fit:cover; border-radius:8px; margin-bottom:14px; border:1px solid var(--borde-suave);">
+
+                    <div style="display:flex; gap:8px;">
+                        <button id="btnGuardarPremio" class="btn-primary" style="flex:1; margin-bottom:0;">💾 Guardar Premio</button>
+                        <button id="btnCancelarEdicionPremio" class="btn-outline hidden" style="flex:1; margin-bottom:0;">Cancelar</button>
+                    </div>
+                </div>
+
+                <h4 style="font-family:'Playfair Display',serif; font-size: 14px; margin: 0 0 10px;">Premios actuales en el catálogo</h4>
+                <div id="admin-premios-crud-list" class="tickets-container" style="max-height: 320px;"></div>
             </div>
         </div>
     </div>
