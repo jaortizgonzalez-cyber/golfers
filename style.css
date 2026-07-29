@@ -335,7 +335,7 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--dorado); 
 .reward-card:hover { transform: translateY(-4px); box-shadow: 0 14px 30px rgba(18,59,44,0.14); }
 
 .reward-photo-wrap {
-    position: relative; width: 100%; aspect-ratio: 4 / 3;
+    position: relative; width: 100%; height: 190px;
     background: linear-gradient(135deg, var(--verde-fairway), var(--verde-oscuro));
     overflow: hidden;
 }
