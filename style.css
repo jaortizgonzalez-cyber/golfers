@@ -69,13 +69,19 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
    ----------------------------------------- */
 .app-header {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
-    padding-bottom: 18px;
+    flex-direction: column;
+    gap: 14px;
+    padding-bottom: 16px;
     margin-bottom: 22px;
     border-bottom: 1px solid var(--borde-suave);
     position: relative;
+}
+
+.header-top-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
 }
 
 .brand { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
@@ -83,27 +89,22 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
     width: 34px; height: 34px; border-radius: 50%;
     background: var(--verde-fairway); color: var(--dorado-suave);
     display: flex; align-items: center; justify-content: center; font-size: 16px;
-    border: 1px solid var(--dorado);
+    border: 1px solid var(--dorado); flex-shrink: 0;
 }
 .brand-name {
     font-family: 'Playfair Display', serif; font-weight: 700; font-size: 17px;
     color: var(--verde-fairway); letter-spacing: 0.3px; white-space: nowrap;
 }
 
-/* Nav: horizontal on desktop, drawer on mobile */
+/* Nav: full row below brand/user, wraps instead of clipping on desktop */
 .nav-tabs {
     display: flex;
     align-items: center;
     gap: 4px;
+    flex-wrap: wrap;
     background: transparent;
     padding: 0;
-    flex: 1;
-    justify-content: center;
-    overflow-x: auto;
-    white-space: nowrap;
-    -webkit-overflow-scrolling: touch;
 }
-.nav-tabs::-webkit-scrollbar { display: none; }
 
 .tab-btn {
     flex: 0 0 auto;
@@ -130,7 +131,7 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
 .user-box { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
 .user-greeting-box { display: flex; flex-direction: column; overflow: hidden; align-items: flex-end; }
 .welcome-text { font-size: 10px; color: var(--texto-gris); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
-.user-name-text { font-size: 15px; font-weight: 700; color: var(--verde-fairway); font-family: 'Playfair Display', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
+.user-name-text { font-size: 15px; font-weight: 700; color: var(--verde-fairway); font-family: 'Playfair Display', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
 .btn-logout-link { background: transparent; border: none; color: #9A9385; font-size: 11px; text-decoration: underline; padding: 0; cursor: pointer; white-space: nowrap; width: auto; margin-bottom: 0; transition: color 0.2s; }
 .btn-logout-link:hover { color: var(--texto-oscuro); }
 
@@ -165,12 +166,13 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
 @media (max-width: 860px) {
     .hamburger-btn { display: flex; }
     .mobile-menu-overlay { display: block; }
+    .user-greeting-box { display: none; }
 
     .nav-tabs {
         position: fixed; top: 0; right: -85%; width: 78%; max-width: 300px; height: 100vh;
         background: var(--verde-oscuro); flex-direction: column; align-items: stretch;
         justify-content: flex-start; padding: 76px 20px 24px; gap: 2px;
-        transition: right 0.3s ease; z-index: 999; overflow-y: auto;
+        transition: right 0.3s ease; z-index: 999; overflow-y: auto; flex-wrap: nowrap;
     }
     .nav-tabs.open { right: 0; box-shadow: -18px 0 40px rgba(0,0,0,0.25); }
 
@@ -181,13 +183,10 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
     .tab-btn:hover { background: transparent; color: var(--dorado-suave); }
     .tab-btn.active { color: var(--dorado); }
     .tab-btn.active::after { display: none; }
-
-    .user-box { gap: 10px; }
-    .user-greeting-box { display: none; }
 }
 
 @media (min-width: 900px) {
-    #lobby-screen.card { max-width: 760px; }
+    #lobby-screen.card { max-width: 860px; }
     .catalogo-container { grid-template-columns: repeat(3, 1fr); }
     .admin-stats-grid { grid-template-columns: repeat(4, 1fr); }
     .admin-stats-grid .admin-stat-card[style] { grid-column: span 2 !important; }
