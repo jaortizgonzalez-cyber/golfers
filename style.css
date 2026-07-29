@@ -238,6 +238,10 @@ button:disabled { background-color: #EDEAE0; color: #B3AB9B; cursor: not-allowed
 .tournament-label { font-size: 13px; color: var(--texto-gris); }
 .badge { background-color: var(--verde-fairway); color: var(--dorado-suave); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.6px; white-space: nowrap; text-transform: uppercase; }
 .badge-closed { background-color: #A39C8C !important; color: var(--blanco) !important; }
+.badge-live { background-color: var(--dorado); color: var(--verde-oscuro) !important; }
+/* Etiqueta discreta "PRÓXIMO" para la tarjeta destacada del calendario -- ya NO es un badge
+   sólido para no competir visualmente con el badge "ABIERTO" del Torneo Activo de arriba. */
+.proximo-label { font-size: 11px; font-weight: 700; letter-spacing: 0.4px; color: var(--dorado); text-transform: uppercase; white-space: nowrap; }
 
 /* -----------------------------------------
    SLIDER Y ROSTER
