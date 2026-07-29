@@ -510,11 +510,13 @@ document.getElementById('btnSyncCalendario')?.addEventListener('click', async ()
 
 async function cargarCalendarioDelMes() {
     const container = document.getElementById('calendario-torneos-list');
+    const mesHeader = document.getElementById('calendario-mes-header');
     if (!container) return;
 
     try {
         const snap = await getDoc(doc(db, "calendario", "mes_actual"));
         if (!snap.exists() || !snap.data().torneos || snap.data().torneos.length === 0) {
+            if (mesHeader) mesHeader.classList.add('hidden');
             container.innerHTML = `<div class="empty-state" style="padding:14px; font-size:12px;">Todavía no se ha cargado el calendario del mes.</div>`;
             return;
         }
@@ -524,6 +526,8 @@ async function cargarCalendarioDelMes() {
         // Normalizamos a medianoche LOCAL para comparar por día calendario, no por hora exacta
         // (antes esto hacía que dijera "mañana" cuando en realidad faltaban 2 días).
         const hoySinHora = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+        const mesActualNum = ahora.getMonth();
+        const anioActualNum = ahora.getFullYear();
 
         const conFecha = torneos
             .map(t => ({ ...t, inicioDate: new Date(t.inicio) }))
@@ -547,7 +551,8 @@ async function cargarCalendarioDelMes() {
         });
 
         if (proximos.length === 0) {
-            container.innerHTML = `<div class="empty-state" style="padding:14px; font-size:12px;">No hay más torneos próximos en el calendario cargado.</div>`;
+            if (mesHeader) mesHeader.classList.add('hidden');
+            container.innerHTML = '';
             return;
         }
 
@@ -560,11 +565,15 @@ async function cargarCalendarioDelMes() {
         };
         const fechaLarga = (t) => t.detalle || t.inicioDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
 
+        // 🔧 AJUSTE: la tarjeta destacada (el próximo torneo de la lista) ya NO muestra una
+        // etiqueta tipo "badge" sólida con "Empieza en X días" — eso competía visualmente con
+        // el badge "ABIERTO" del Torneo Activo de arriba, que es el que de verdad importa.
+        // Ahora simplemente dice "PRÓXIMO" en texto dorado discreto, sin fondo sólido.
         const tarjetaTorneo = (t, destacado) => `
             <div class="ticket-card ${destacado ? 'torneo-destacado' : ''}" style="margin-bottom:10px;">
                 <div class="ticket-card-header">
                     <span>${t.nombre}</span>
-                    ${destacado ? `<span class="badge">${calcularEtiqueta(t.inicioDate)}</span>` : `<span style="font-size:11px; color:var(--texto-gris);">${calcularEtiqueta(t.inicioDate)}</span>`}
+                    ${destacado ? `<span class="proximo-label">PRÓXIMO</span>` : `<span style="font-size:11px; color:var(--texto-gris);">${calcularEtiqueta(t.inicioDate)}</span>`}
                 </div>
                 <div class="ticket-card-body">
                     <p style="margin:0; font-size:12px;">📅 ${fechaLarga(t)}</p>
@@ -572,22 +581,33 @@ async function cargarCalendarioDelMes() {
             </div>
         `;
 
-        const masProximo = proximos[0];
-        const mesDelProximo = masProximo.inicioDate.getMonth();
-        const anioDelProximo = masProximo.inicioDate.getFullYear();
-
-        const restoDelMes = proximos.slice(1).filter(t =>
-            t.inicioDate.getMonth() === mesDelProximo && t.inicioDate.getFullYear() === anioDelProximo
+        // 🔧 AJUSTE: "Torneos del mes" ahora agrupa por el MES CALENDARIO ACTUAL (hoy), no por
+        // el mes del próximo torneo de la lista. Antes, si el torneo activo era el último de
+        // julio, el próximo de la lista caía en agosto y TODO agosto se mostraba bajo "Torneos
+        // del mes" (título engañoso). Ahora: si no queda ningún torneo próximo dentro del MES
+        // ACTUAL (porque el activo ya es el último de julio, por ejemplo), esta sección completa
+        // se oculta — título, descripción y contenido — y todo pasa directo a "Ver el resto del
+        // año", colapsado, como corresponde.
+        const delMesActual = proximos.filter(t =>
+            t.inicioDate.getMonth() === mesActualNum && t.inicioDate.getFullYear() === anioActualNum
         );
-        const restoDelAnio = proximos.slice(1).filter(t =>
-            !(t.inicioDate.getMonth() === mesDelProximo && t.inicioDate.getFullYear() === anioDelProximo)
+        const restoDelAnio = proximos.filter(t =>
+            !(t.inicioDate.getMonth() === mesActualNum && t.inicioDate.getFullYear() === anioActualNum)
         );
 
-        let html = tarjetaTorneo(masProximo, true);
+        let html = '';
 
-        if (restoDelMes.length > 0) {
-            html += `<div style="font-size:11px; color:var(--texto-gris); text-transform:uppercase; letter-spacing:0.4px; margin:14px 0 8px;">Resto del mes</div>`;
-            restoDelMes.forEach(t => { html += tarjetaTorneo(t, false); });
+        if (delMesActual.length > 0) {
+            if (mesHeader) mesHeader.classList.remove('hidden');
+            const masProximo = delMesActual[0];
+            html += tarjetaTorneo(masProximo, true);
+
+            if (delMesActual.length > 1) {
+                html += `<div style="font-size:11px; color:var(--texto-gris); text-transform:uppercase; letter-spacing:0.4px; margin:14px 0 8px;">Resto del mes</div>`;
+                delMesActual.slice(1).forEach(t => { html += tarjetaTorneo(t, false); });
+            }
+        } else {
+            if (mesHeader) mesHeader.classList.add('hidden');
         }
 
         if (restoDelAnio.length > 0) {
@@ -650,7 +670,18 @@ function actualizarUIەTorneo() {
     document.getElementById('torneo-campo').textContent = state.torneoActual.course;
     document.getElementById('chk-torneo').textContent = state.torneoActual.name;
     
-    let torneoCerrado = state.torneoActual.status === "CLOSED";
+    // 🔧 AJUSTE: el badge principal (ABIERTO / INICIADO / FINALIZADO) ahora refleja el estado
+    // REAL y en vivo del torneo según ESPN ('estado_vivo': 'pre'/'in'/'post'), no solo si ya
+    // pasó la fecha de inicio. Esto da 3 fases claras, tal como corresponde a un torneo real:
+    //   - ABIERTO    -> aún no arranca, se puede inscribir e interactuar
+    //   - INICIADO   -> el torneo ya está en juego (jueves a domingo); inscripciones cerradas
+    //   - FINALIZADO -> el torneo ya se jugó por completo (domingo), esté o no ya liquidado
+    //                   oficialmente por el admin (status "CLOSED" también cuenta como FINALIZADO)
+    // La semana siguiente, ESPN simplemente reporta un nuevo torneo activo distinto y este
+    // desaparece solo (no requiere lógica extra: fetchTorneoDesdeESPN() ya trae el evento actual).
+    const estadoReal = state.torneoActual.estado_vivo || 'pre';
+    const yaLiquidado = state.torneoActual.status === "CLOSED";
+    const inscripcionCerrada = yaLiquidado || estadoReal !== 'pre';
 
     // ⚡ OPTIMIZADO: usamos directamente el texto oficial del rango de fechas que ESPN ya trae
     // listo en el tramo del torneo/competencia ('rango_fechas', ej: "July 30 - August 2"). Nada
@@ -670,24 +701,26 @@ function actualizarUIەTorneo() {
         document.getElementById('torneo-inicio').textContent = "";
     }
 
-    if (state.torneoActual.startDate) {
-        const fechaInicio = new Date(state.torneoActual.startDate);
-        if (new Date().getTime() >= fechaInicio.getTime() || torneoCerrado) {
-            torneoCerrado = true;
-        }
-    }
-
     const badge = document.getElementById('torneo-badge');
     const btnInscripcion = document.getElementById('btnIrSeleccion');
 
-    if (torneoCerrado) {
-        badge.textContent = "CERRADO / FINALIZADO";
+    if (yaLiquidado || estadoReal === 'post') {
+        badge.textContent = "FINALIZADO";
         badge.className = "badge badge-closed";
-        btnInscripcion.disabled = true;
-        btnInscripcion.textContent = "Torneo Finalizado / No disponible";
+    } else if (estadoReal === 'in') {
+        badge.textContent = "INICIADO";
+        badge.className = "badge badge-live";
     } else {
         badge.textContent = "ABIERTO";
         badge.className = "badge";
+    }
+
+    if (inscripcionCerrada) {
+        btnInscripcion.disabled = true;
+        btnInscripcion.textContent = (yaLiquidado || estadoReal === 'post')
+            ? "Torneo Finalizado / No disponible"
+            : "Inscripciones cerradas (torneo en curso)";
+    } else {
         btnInscripcion.disabled = false;
         btnInscripcion.textContent = "Elegir equipo e inscribirme";
     }
@@ -698,14 +731,13 @@ function actualizarUIەTorneo() {
     const dot = document.getElementById('torneo-live-dot');
     const label = document.getElementById('torneo-live-label');
     if (dot && label) {
-        const estado = state.torneoActual.estado_vivo || 'pre';
-        if (estado === 'in') {
+        if (estadoReal === 'in') {
             dot.className = 'live-dot';
             label.textContent = 'En vivo ahora';
             label.style.color = 'var(--verde-fairway)';
-        } else if (estado === 'post') {
+        } else if (yaLiquidado || estadoReal === 'post') {
             dot.className = 'pending-dot';
-            label.textContent = 'Terminado, pendiente de liquidar';
+            label.textContent = yaLiquidado ? 'Finalizado y liquidado' : 'Finalizado, pendiente de liquidar';
             label.style.color = 'var(--texto-gris)';
         } else {
             dot.className = 'pending-dot';
