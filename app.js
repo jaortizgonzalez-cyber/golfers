@@ -140,8 +140,8 @@ document.getElementById('btnRegisterToggle').addEventListener('click', () => {
         btnForgot.classList.add('hidden');
     } else {
         regFields.classList.add('hidden');
-        title.textContent = "Copa Fairway";
-        sub.textContent = "Quinielas privadas de golf — acceso exclusivo";
+        title.textContent = "Birdie";
+        sub.textContent = "Elige tu estrategia. Juega. Diviértete. Gana.";
         btnLogin.textContent = "Entrar al grupo";
         btnRegToggle.textContent = "Crear cuenta nueva";
         btnForgot.classList.remove('hidden');
@@ -615,18 +615,11 @@ async function cargarPanelAdmin() {
 
         let totalRecaudado = 0;
         let pagosPendientes = [];
-        let premiosPendientesList = [];
 
         querySnapshot.forEach(docSnap => {
             const bet = docSnap.data();
             if (bet.payment_status === "APPROVED") {
                 totalRecaudado += (bet.amount_cop || 0);
-                premiosPendientesList.push({
-                    id: docSnap.id,
-                    email: bet.user_email,
-                    premio: bet.amount_cop >= 50000 ? "Docena Pelotas Callaway (Amazon)" : "Guante de Golf Sintético",
-                    estado: "Pendiente de Envío / Importación"
-                });
             } else {
                 pagosPendientes.push({
                     id: docSnap.id,
@@ -689,29 +682,77 @@ async function cargarPanelAdmin() {
             }
         }
 
-        // --- Premios por entregar (solo de apuestas ya con pago confirmado) ---
+        // --- Premios reclamados: salud de la bolsa + gestión real ---
+        const claimsSnap = await getDocs(collection(db, "claims"));
+        const claims = [];
+        claimsSnap.forEach(d => claims.push({ id: d.id, ...d.data() }));
+
+        const claimsComprometidos = claims.filter(c => c.status !== "rechazado");
+        const costoComprometido = claimsComprometidos.reduce((sum, c) => sum + (c.item_price || 0), 0);
+
+        const saludBox = document.getElementById('admin-bolsa-salud');
+        if (saludBox) {
+            const pctUsado = bolsaNeta > 0 ? Math.min(150, Math.round((costoComprometido / bolsaNeta) * 100)) : (costoComprometido > 0 ? 150 : 0);
+            let nivel = 'ok', mensaje = '✅ La bolsa de premios está sana.';
+            if (pctUsado >= 100) { nivel = 'riesgo'; mensaje = '⚠️ ¡Alerta! Los premios comprometidos ya superan la bolsa neta disponible.'; }
+            else if (pctUsado >= 70) { nivel = 'alerta'; mensaje = '🟡 Cuidado: te estás acercando al límite de la bolsa neta.'; }
+
+            saludBox.innerHTML = `
+                <div class="bolsa-salud-row"><span>Comprometido en premios</span><span>$${costoComprometido.toLocaleString('es-CO')}</span></div>
+                <div class="bolsa-salud-row"><span>Bolsa neta disponible</span><span>$${Math.round(bolsaNeta).toLocaleString('es-CO')}</span></div>
+                <div class="bolsa-salud-bar"><div class="bolsa-salud-fill ${nivel}" style="width:${Math.min(100, pctUsado)}%;"></div></div>
+                <div class="bolsa-salud-msg" style="color:${nivel === 'riesgo' ? 'var(--rojo-alerta)' : (nivel === 'alerta' ? '#8a6d1a' : 'var(--verde-fairway)')};">${mensaje}</div>
+            `;
+        }
+
         const container = document.getElementById('admin-premios-list');
         container.innerHTML = '';
 
-        if (premiosPendientesList.length === 0) {
+        const claimsPendientes = claims.filter(c => c.status === "pendiente");
+
+        if (claimsPendientes.length === 0) {
             container.innerHTML = `<div class="empty-state" style="padding:15px; font-size:12px;">No hay premios pendientes de gestión.</div>`;
             return;
         }
 
-        premiosPendientesList.slice(0, 5).forEach(item => {
+        claimsPendientes.forEach(item => {
             const div = document.createElement('div');
             div.className = 'ticket-card';
             div.innerHTML = `
                 <div class="ticket-card-header">
-                    <span style="font-size:12px;">Ganador: ${item.email}</span>
-                    <span style="color:var(--dorado); font-size:11px;">${item.estado}</span>
+                    <span style="font-size:12px;">${item.user_email}</span>
+                    <span style="color:var(--dorado); font-size:11px;">$${(item.item_price || 0).toLocaleString('es-CO')}</span>
                 </div>
                 <div class="ticket-card-body">
-                    <p style="margin:0 0 8px 0; font-size:12px;">🎁 <strong>Premio:</strong> ${item.premio}</p>
-                    <button class="btn-outline btn-small" onclick="alert('Gestión de envío internacional vinculada con Amazon y logística de impuestos.')">📦 Gestionar Envío</button>
+                    <p style="margin:0 0 10px 0; font-size:12px;">🎁 <strong>Premio:</strong> ${item.item_name}</p>
+                    <div style="display:flex; gap:8px;">
+                        <button class="btn-outline btn-small btn-entregar-premio" data-id="${item.id}" style="flex:1;">✔️ Entregado</button>
+                        <button class="btn-outline btn-small btn-rechazar-premio" data-id="${item.id}" style="flex:1; border-color:var(--rojo-alerta); color:var(--rojo-alerta);">✖️ Rechazar</button>
+                    </div>
                 </div>
             `;
             container.appendChild(div);
+        });
+
+        document.querySelectorAll('.btn-entregar-premio').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                try {
+                    await updateDoc(doc(db, "claims", e.target.dataset.id), { status: "entregado", delivered_at: serverTimestamp() });
+                    mostrarModal("Premio Entregado", "Se marcó como entregado.", "✅", () => cargarPanelAdmin());
+                } catch (err) {
+                    mostrarModal("Error", "No se pudo actualizar el reclamo.", "❌");
+                }
+            });
+        });
+        document.querySelectorAll('.btn-rechazar-premio').forEach(btn => {
+            btn.addEventListener('click', async (e) => {
+                try {
+                    await updateDoc(doc(db, "claims", e.target.dataset.id), { status: "rechazado", rejected_at: serverTimestamp() });
+                    mostrarModal("Reclamo Rechazado", "Se marcó como rechazado y ya no cuenta contra tu bolsa neta.", "✖️", () => cargarPanelAdmin());
+                } catch (err) {
+                    mostrarModal("Error", "No se pudo actualizar el reclamo.", "❌");
+                }
+            });
         });
 
     } catch (e) {
@@ -781,12 +822,47 @@ async function calcularMisPuntos(userId) {
     return Math.round(total);
 }
 
-// --- CARGAR PREMIOS (con puntos reales calculados desde Firestore) ---
+// --- CARGAR PREMIOS (fotos y precios reales, puntos calculados automáticamente) ---
+//
+// ⚙️ TASA DE CAMBIO PUNTOS → PESOS: cuántos pesos de VALOR REAL del producto representa 1 punto.
+// Súbelo si sientes que la gente gana premios demasiado fácil / te está costando plata.
+// Bájalo si los premios quedan inalcanzables. Ajusta con datos reales de tus primeros torneos.
+const PESOS_POR_PUNTO = 45;
+
+// ⚙️ CATÁLOGO: pon aquí el precio REAL de mercado de cada producto (COP) y la URL de SU FOTO REAL
+// (sube la foto a Firebase Storage o tu propio hosting — no uses fotos de otras tiendas sin permiso).
+// Los puntos requeridos se calculan solos: precio_real / PESOS_POR_PUNTO. Así, si sube el precio del
+// producto en el mercado, solo actualizas el número acá y el juego se re-balancea automáticamente.
 const CATALOGO_PREMIOS = [
-    { id: 'r1', nombre: 'Guante de Golf Sintético (Bajo peso/Envío económico)', puntos: 2000, icono: '🧤' },
-    { id: 'r2', nombre: 'Docena Pelotas (Callaway - Stock Amazon)', puntos: 5000, icono: '⛳' },
-    { id: 'r3', nombre: 'Wedge Liviano Especializado', puntos: 15000, icono: '🏌️' }
+    {
+        id: 'r1',
+        nombre: 'Guante de Golf FootJoy WeatherSof',
+        precio_real: 89000,
+        imagen: 'PEGA_AQUI_URL_FOTO_GUANTE',
+        tier: 'bronce',
+        icono_respaldo: '🧤'
+    },
+    {
+        id: 'r2',
+        nombre: 'Docena Pelotas Callaway Chrome Soft',
+        precio_real: 249000,
+        imagen: 'PEGA_AQUI_URL_FOTO_PELOTAS',
+        tier: 'plata',
+        icono_respaldo: '⛳'
+    },
+    {
+        id: 'r3',
+        nombre: 'Wedge Cleveland RTX Especializado',
+        precio_real: 780000,
+        imagen: 'PEGA_AQUI_URL_FOTO_WEDGE',
+        tier: 'oro',
+        icono_respaldo: '🏌️'
+    }
 ];
+
+function puntosRequeridos(item) {
+    return Math.ceil(item.precio_real / PESOS_POR_PUNTO);
+}
 
 async function cargarPremios(userId) {
     const puntosEl = document.getElementById('user-points');
@@ -797,52 +873,104 @@ async function cargarPremios(userId) {
     if (restanteEl) restanteEl.textContent = 'Calculando...';
 
     let totalPuntos = 0;
-    if (userId) {
-        try {
+    try {
+        if (userId) {
             totalPuntos = await calcularMisPuntos(userId);
-        } catch (e) {
-            console.error("Error calculando puntos:", e);
         }
+    } catch (e) {
+        console.error("cargarPremios: no se pudieron calcular los puntos, se muestra 0. Error real:", e);
+        totalPuntos = 0;
     }
 
     if (puntosEl) puntosEl.textContent = totalPuntos.toLocaleString('es-CO') + " pts";
 
-    const maxUmbral = CATALOGO_PREMIOS[CATALOGO_PREMIOS.length - 1].puntos;
+    const umbrales = CATALOGO_PREMIOS.map(puntosRequeridos);
+    const maxUmbral = Math.max(...umbrales);
     const pct = Math.min(100, Math.round((totalPuntos / maxUmbral) * 100));
     if (fillEl) fillEl.style.width = pct + "%";
 
-    const siguiente = CATALOGO_PREMIOS.find(p => totalPuntos < p.puntos);
+    const siguienteIdx = umbrales.findIndex(p => totalPuntos < p);
     if (restanteEl) {
-        restanteEl.textContent = siguiente
-            ? `Faltan ${(siguiente.puntos - totalPuntos).toLocaleString('es-CO')} pts para tu próxima recompensa`
+        restanteEl.textContent = siguienteIdx > -1
+            ? `Faltan ${(umbrales[siguienteIdx] - totalPuntos).toLocaleString('es-CO')} pts para tu próxima recompensa`
             : "¡Ya alcanzaste todos los premios disponibles!";
     }
 
-    const container = document.getElementById('catalogo-list');
-    container.innerHTML = '';
+    try {
+        const container = document.getElementById('catalogo-list');
+        container.innerHTML = '';
 
-    CATALOGO_PREMIOS.forEach(item => {
-        const alcanzado = totalPuntos >= item.puntos;
-        const div = document.createElement('div');
-        div.className = 'reward-card';
-        div.innerHTML = `
-            <div>
-                <div class="reward-icon">${item.icono}</div>
-                <div class="reward-name">${item.nombre}</div>
-                <div class="reward-pts">${item.puntos.toLocaleString('es-CO')} pts</div>
-            </div>
-            <button class="btn-outline btn-small btn-redimir" ${alcanzado ? '' : 'disabled'}>
-                ${alcanzado ? 'Reclamar' : `Faltan ${(item.puntos - totalPuntos).toLocaleString('es-CO')} pts`}
-            </button>
-        `;
+        // Consulta si el usuario ya reclamó cada premio, para no mostrar el botón dos veces
+        let misClaims = [];
+        try {
+            const claimsSnap = await getDocs(query(collection(db, "claims"), where("user_id", "==", userId)));
+            claimsSnap.forEach(d => misClaims.push(d.data()));
+        } catch (e) {
+            console.error("No se pudieron leer los reclamos previos:", e);
+        }
 
-        div.querySelector('.btn-redimir').addEventListener('click', () => {
-            if (!alcanzado) return;
-            mostrarModal("Premios", "¡Alcanzaste este premio! Un administrador coordinará contigo la entrega.", "🎁");
+        CATALOGO_PREMIOS.forEach(item => {
+            const req = puntosRequeridos(item);
+            const alcanzado = totalPuntos >= req;
+            const yaReclamado = misClaims.some(c => c.item_id === item.id);
+            const miniPct = Math.min(100, Math.round((totalPuntos / req) * 100));
+
+            const div = document.createElement('div');
+            div.className = 'reward-card';
+
+            const tieneImagenValida = item.imagen && !item.imagen.startsWith('PEGA_AQUI');
+
+            div.innerHTML = `
+                <div class="reward-photo-wrap ${alcanzado ? '' : 'locked'}">
+                    ${tieneImagenValida
+                        ? `<img src="${item.imagen}" alt="${item.nombre}" onerror="this.style.display='none'; this.parentElement.querySelector('.reward-photo-fallback').style.display='flex';">`
+                        : ''
+                    }
+                    <div class="reward-photo-fallback" style="${tieneImagenValida ? 'display:none;' : ''}">${item.icono_respaldo}</div>
+                    <span class="reward-tier-badge ${item.tier}">${item.tier}</span>
+                    ${!alcanzado ? `<span class="reward-lock-badge">🔒</span>` : ''}
+                </div>
+                <div class="reward-body">
+                    <div class="reward-name">${item.nombre}</div>
+                    <div class="reward-price-row">
+                        <span class="reward-price-real">Valor real: $${item.precio_real.toLocaleString('es-CO')}</span>
+                        <span class="reward-pts">${req.toLocaleString('es-CO')} pts</span>
+                    </div>
+                    <div class="reward-progress-mini"><div class="reward-progress-mini-fill" style="width:${miniPct}%;"></div></div>
+                    <div class="reward-status-text ${alcanzado ? 'ready' : ''}">
+                        ${yaReclamado ? '✅ Ya reclamado' : (alcanzado ? '¡Puedes reclamarlo!' : `Te faltan ${(req - totalPuntos).toLocaleString('es-CO')} pts`)}
+                    </div>
+                    <button class="btn-outline btn-small btn-redimir" ${(alcanzado && !yaReclamado) ? '' : 'disabled'}>
+                        ${yaReclamado ? 'Reclamado' : 'Reclamar'}
+                    </button>
+                </div>
+            `;
+
+            div.querySelector('.btn-redimir').addEventListener('click', async () => {
+                if (!alcanzado || yaReclamado) return;
+                try {
+                    const user = auth.currentUser;
+                    await addDoc(collection(db, "claims"), {
+                        user_id: user.uid,
+                        user_email: user.email,
+                        item_id: item.id,
+                        item_name: item.nombre,
+                        item_price: item.precio_real,
+                        points_at_claim: totalPuntos,
+                        status: "pendiente",
+                        created_at: serverTimestamp()
+                    });
+                    mostrarModal("¡Premio Reclamado!", "Quedó registrado. Un administrador coordinará contigo la entrega.", "🎁", () => cargarPremios(userId));
+                } catch (e) {
+                    mostrarModal("Error", "No se pudo registrar el reclamo. Intenta de nuevo.", "❌");
+                }
+            });
+
+            container.appendChild(div);
         });
-
-        container.appendChild(div);
-    });
+    } catch (e) {
+        console.error("cargarPremios: error renderizando el catálogo:", e);
+    }
 }
 
 // --- SELECCIÓN DE ROSTER ---
