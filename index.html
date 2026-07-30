@@ -3,8 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- 🔒 SEGURIDAD: Content-Security-Policy como segunda capa de defensa contra XSS. Bloquea
+         cualquier <script> inline o inyectado, y restringe desde dónde se pueden cargar scripts,
+         estilos, imágenes y conexiones de red. IMPORTANTE: pruébala en tu proyecto real de
+         Firebase después de desplegar -- si el navegador bloquea alguna petición legítima (revisa
+         la consola F12), puede que necesites agregar ese dominio a la directiva correspondiente. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://a.espncdn.com; connect-src 'self' https://site.api.espn.com https://sports.core.api.espn.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'self';">
     <title>Elige tu estrategia. Juega. Diviértete. Gana.</title>
-
     <link rel="icon" type="image/jpeg" href="logo-golfers.jpg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -35,29 +40,27 @@
         <div id="register-fields" class="hidden">
             <input type="text" id="reg-nombre" placeholder="Nombre">
             <input type="text" id="reg-apellido" placeholder="Apellidos">
+            <!-- 🔒 SEGURIDAD: código de invitación del grupo, requerido para crear una cuenta.
+                 No es una barrera criptográfica fuerte, pero evita registros casuales de gente
+                 que solo tenga el link, sin ser parte real del grupo de amigos. -->
+            <input type="text" id="reg-invite-code" placeholder="Código de invitación del grupo">
         </div>
-
         <input type="email" id="email" placeholder="Correo electrónico">
         <input type="password" id="password" placeholder="Contraseña">
-
         <button id="btnLogin" class="btn-primary">Entrar al grupo <span>&gt;</span></button>
         <button id="btnRegisterToggle" class="btn-outline">Crear cuenta nueva</button>
         <button id="btnForgotPassword" class="btn-text" style="font-size: 13px; margin-top: 5px; width: 100%;">¿Olvidaste tu contraseña?</button>
-
         <p class="disclaimer">Plataforma privada de torneos de golf segura.</p>
         <div id="message"></div>
     </div>
 
     <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
     <div id="lobby-screen" class="card hidden">
-
-        <!-- ENCABEZADO: fila superior (logo + usuario) y fila de menú debajo -->
         <div class="app-header">
             <div class="header-top-row">
                 <div class="brand">
                     <img src="logo-golfers.jpg" alt="Golfers" class="brand-mark">
                 </div>
-
                 <div class="user-box">
                     <div class="user-greeting-box">
                         <span class="welcome-text">Bienvenido,</span>
@@ -69,7 +72,6 @@
                     </button>
                 </div>
             </div>
-
             <nav class="nav-tabs" id="main-nav-tabs">
                 <button class="tab-btn active" id="tab-torneos">Torneos</button>
                 <button class="tab-btn" id="tab-apuestas">Mis apuestas</button>
@@ -80,6 +82,7 @@
                 <!-- Botón Admin inyectado dinámicamente si es administrador -->
             </nav>
         </div>
+
         <div id="mobileMenuOverlay" class="mobile-menu-overlay"></div>
 
         <!-- CONTENIDO A: Torneos -->
@@ -124,17 +127,13 @@
         <div id="content-perfil" class="tab-content hidden">
             <h2 class="serif-title mt-15">Mi Perfil</h2>
             <p class="subtitle-small">Actualiza tu información personal registrada en la plataforma.</p>
-
             <div class="profile-form">
                 <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Nombre</label>
                 <input type="text" id="profile-nombre" placeholder="Tu nombre">
-
                 <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Apellidos</label>
                 <input type="text" id="profile-apellido" placeholder="Tus apellidos">
-
                 <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris);">Correo electrónico (No modificable)</label>
                 <input type="email" id="profile-email" disabled style="background: #F1EFE6; cursor: not-allowed;">
-
                 <button id="btnGuardarPerfil" class="btn-primary mt-15">Guardar Cambios <span>💾</span></button>
             </div>
         </div>
@@ -149,7 +148,6 @@
             </div>
 
             <div class="rules-container">
-
                 <details class="rule-accordion" open>
                     <summary><span class="rule-icon-mini">💰</span> 1. Cómo apostar: monto, multiplicador y cupos</summary>
                     <div class="rule-body-content">
@@ -233,13 +231,14 @@
                     <div class="rule-body-content">
                         <p>Un único correo tiene acceso al panel de Admin. Desde ahí se confirman pagos, se sincronizan resultados oficiales, se liquidan/cierran torneos y se aprueban o rechazan premios.</p>
                         <p>Ningún jugador puede aprobar su propio pago, inflar sus propios puntos, ni cambiar el monto de su apuesta después de crearla — esas acciones están bloqueadas a nivel de base de datos (no solo escondidas en la pantalla), así que no hay forma de hacer trampa desde el navegador.</p>
+                        <p>El Leaderboard público solo muestra nombre, equipo y puntos de cada jugador — nunca montos apostados ni referencias de pago, que permanecen privados entre cada jugador y el administrador.</p>
                     </div>
                 </details>
 
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">⚖️</span> 8. Juego responsable y condiciones del grupo</summary>
                     <div class="rule-body-content">
-                        <p>Este es un juego <strong>privado entre un grupo cerrado de conocidos</strong>, no una casa de apuestas pública ni un producto comercial abierto al público.</p>
+                        <p>Este es un juego <strong>privado entre un grupo cerrado de conocidos</strong>, no una casa de apuestas pública ni un producto comercial abierto al público. Por eso el registro requiere un código de invitación del administrador.</p>
                         <p>Apuesta únicamente dinero que estés dispuesto a perder. Esto es para divertirse entre amigos, no es una inversión ni una fuente de ingresos garantizada.</p>
                         <p>Debes ser mayor de edad para participar.</p>
                         <p>Las decisiones del administrador sobre resultados, confirmación de pagos y aprobación de premios son definitivas dentro del grupo.</p>
@@ -256,7 +255,6 @@
                         <p><strong>¿Quién decide si gané o no un premio?</strong><br>El sistema calcula tus puntos automáticamente según los resultados oficiales; el administrador solo confirma la entrega física del premio.</p>
                     </div>
                 </details>
-
             </div>
         </div>
 
@@ -268,6 +266,7 @@
                 <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
                 <div style="font-size: 11px; margin-top: 8px; opacity: 0.8;" id="user-points-remaining">Calculando...</div>
             </div>
+
             <h2 class="serif-title mt-15">Premios Disponibles</h2>
             <p class="subtitle-small">Premios seleccionados de alta rotación (sin costos excesivos de peso/envío).</p>
             <div id="catalogo-list" class="catalogo-container"></div>
@@ -329,26 +328,21 @@
 
                 <div id="premio-form-box" style="background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
                     <h4 id="premio-form-titulo" style="font-family:'Playfair Display',serif; font-size: 14px; margin: 0 0 12px;">Agregar nuevo premio</h4>
-
                     <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Nombre del premio</label>
                     <input type="text" id="premio-nombre" placeholder="Ej: Guante de Golf FootJoy WeatherSof">
-
                     <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Precio real de mercado (COP)</label>
                     <input type="number" id="premio-precio" placeholder="Ej: 89000" style="margin-bottom: 6px;">
                     <p id="premio-puntos-preview" style="font-size: 12px; color: var(--dorado); font-weight: 700; margin: 0 0 14px; min-height: 16px;"></p>
-
                     <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Nivel</label>
                     <select id="premio-tier" style="width:100%; padding:13px 14px; margin-bottom:14px; border:1px solid var(--borde-suave); border-radius:8px; font-size:14.5px; font-family:'Inter',sans-serif; background:var(--blanco); color:var(--texto-oscuro);">
                         <option value="bronce">Bronce</option>
                         <option value="plata">Plata</option>
                         <option value="oro">Oro</option>
                     </select>
-
                     <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Foto real del producto</label>
                     <input type="file" id="premio-imagen-file" accept="image/*">
                     <p id="premio-imagen-status" style="font-size: 11px; color: var(--texto-gris); margin: 4px 0 10px;"></p>
                     <img id="premio-imagen-preview" class="hidden" style="width:100%; height:180px; object-fit:contain; background:var(--bg-crema); display:block; border-radius:8px; margin-bottom:14px; border:1px solid var(--borde-suave);">
-
                     <div style="display:flex; gap:8px;">
                         <button id="btnGuardarPremio" class="btn-primary" style="flex:1; margin-bottom:0;">💾 Guardar Premio</button>
                         <button id="btnCancelarEdicionPremio" class="btn-outline hidden" style="flex:1; margin-bottom:0;">Cancelar</button>
@@ -395,7 +389,6 @@
         </div>
 
         <div id="player-list" class="player-list"></div>
-
         <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi apuesta <span>&gt;</span></button>
     </div>
 
