@@ -45,6 +45,23 @@ function showScreen(screenName) {
     screens[screenName].classList.remove('hidden');
 }
 
+// 🔒 SEGURIDAD: escapa caracteres HTML especiales antes de insertar cualquier texto que venga
+// de un usuario (nombre de perfil, número de referencia de pago, etc.) o de una fuente externa
+// (ESPN, calendario) dentro de un template literal que luego se asigna a innerHTML. Sin esto,
+// alguien podría poner código <script> o atributos maliciosos (ej. en su nombre de perfil o en
+// el campo de referencia de pago) y ese código se ejecutaría en el navegador de OTRAS personas
+// -- incluido el administrador -- al ver esa información renderizada (Leaderboard, panel Admin,
+// lista de "Mis apuestas", etc.). Se aplica de forma consistente en TODO el archivo.
+function escapeHtml(texto) {
+    if (texto === null || texto === undefined) return '';
+    return String(texto)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
 // --- SISTEMA DE POPUPS / MODALES WOW ---
 function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     const modal = document.getElementById('custom-modal');
@@ -56,11 +73,9 @@ function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
     
     const btn = document.getElementById('modal-btn-action');
     const nuevoBtn = btn.cloneNode(true);
-    // 🔧 FIX: mostrarModal() SIEMPRE resetea el modal a su estado "simple" (un solo botón,
-    // texto por defecto "Entendido", sin la clase roja de peligro). Antes, si este modal se
-    // abría justo después de una confirmación (mostrarConfirmacion), heredaba visualmente el
-    // texto "Sí, eliminar" y el botón "Cancelar" que había quedado de esa confirmación anterior
-    // — por eso, tras confirmar un borrado, el modal de éxito seguía mostrando "Sí, eliminar".
+    // 🔧 mostrarModal() SIEMPRE resetea el modal a su estado "simple" (un solo botón, texto por
+    // defecto "Entendido", sin la clase roja de peligro), para que no herede visualmente el
+    // estado de una confirmación anterior (mostrarConfirmacion).
     nuevoBtn.textContent = "Entendido";
     nuevoBtn.classList.remove('btn-danger');
     btn.parentNode.replaceChild(nuevoBtn, btn);
@@ -75,9 +90,6 @@ function mostrarModal(titulo, mensaje, icono = "✨", callback = null) {
 }
 
 // --- CONFIRMACIÓN WOW (reemplaza el confirm() nativo del navegador) ---
-// Reutiliza el mismo modal-card/overlay de mostrarModal(), agregando el botón "Cancelar"
-// (oculto por defecto) para que las confirmaciones de acciones destructivas (eliminar, etc.)
-// tengan la misma estética "WOW" del resto de la app, en vez del feo alert/confirm del navegador.
 function mostrarConfirmacion(titulo, mensaje, onConfirm, icono = "⚠️") {
     const modal = document.getElementById('custom-modal');
     document.getElementById('modal-title').textContent = titulo;
@@ -99,13 +111,11 @@ function mostrarConfirmacion(titulo, mensaje, onConfirm, icono = "⚠️") {
 
     nuevoBtnAction.addEventListener('click', () => {
         modal.classList.add('hidden');
-        nuevoBtnAction.classList.remove('btn-danger');
         if (onConfirm) onConfirm();
     });
 
     nuevoBtnCancel.addEventListener('click', () => {
         modal.classList.add('hidden');
-        nuevoBtnAction.classList.remove('btn-danger');
         nuevoBtnCancel.classList.add('hidden');
     });
 }
@@ -147,8 +157,7 @@ onAuthStateChanged(auth, async (user) => {
 });
 
 function verificarPermisosAdmin(email) {
-    const tabAdminExistente = document.getElementById('tab-admin');
-    
+    const tabAdminExistente = document.getElementById('tab-admin');    
     if (email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
         if (!tabAdminExistente) {
             const btnAdmin = document.createElement('button');
@@ -162,7 +171,6 @@ function verificarPermisosAdmin(email) {
         if (tabAdminExistente) tabAdminExistente.remove();
     }
 }
-
 function navTabContainerAdd(el) {
     const navTabs = document.querySelector('.nav-tabs');
     navTabs.appendChild(el);
@@ -208,9 +216,31 @@ document.getElementById('btnLogin').addEventListener('click', async () => {
         if (esModoRegistro) {
             const nombre = document.getElementById('reg-nombre').value.trim();
             const apellido = document.getElementById('reg-apellido').value.trim();
+            const codigoIngresado = document.getElementById('reg-invite-code')?.value.trim() || '';
 
             if (!nombre || !apellido) {
                 mostrarModal("Datos Personales", "Debes ingresar tu nombre y apellidos completos.", "⚠️");
+                return;
+            }
+
+            // 🔒 SEGURIDAD: código de invitación del grupo. Esto NO es una barrera criptográfica
+            // fuerte (el documento es de lectura pública porque debe poder validarse ANTES de
+            // iniciar sesión), pero sí evita que alguien cree una cuenta solo por tener el link
+            // de la app sin ser parte real del grupo de amigos. Pídeselo al administrador.
+            if (!codigoIngresado) {
+                mostrarModal("Código Requerido", "Ingresa el código de invitación del grupo para registrarte. Pídeselo al administrador.", "🔒");
+                return;
+            }
+            try {
+                const inviteSnap = await getDoc(doc(db, "config", "invite_code"));
+                const codigoValido = inviteSnap.exists() ? (inviteSnap.data().code || '') : '';
+                if (!codigoValido || codigoIngresado.toLowerCase() !== String(codigoValido).toLowerCase()) {
+                    mostrarModal("Código Incorrecto", "El código de invitación no es válido. Verifica con el administrador del grupo.", "🔒");
+                    return;
+                }
+            } catch (e) {
+                console.error("Error validando código de invitación:", e);
+                mostrarModal("Error", "No se pudo validar el código de invitación. Intenta de nuevo.", "❌");
                 return;
             }
 
@@ -249,8 +279,7 @@ document.getElementById('btnLogout').addEventListener('click', () => signOut(aut
 async function cargarDatosPerfil(user) {
     try {
         const docRef = doc(db, "users", user.uid);
-        const docSnap = await getDoc(docRef);
-        
+        const docSnap = await getDoc(docRef);        
         let nombreCompleto = user.email.split('@')[0];
         if (docSnap.exists()) {
             const data = docSnap.data();
@@ -258,6 +287,7 @@ async function cargarDatosPerfil(user) {
             document.getElementById('profile-nombre').value = data.nombre || '';
             document.getElementById('profile-apellido').value = data.apellido || '';
         }
+        // Nota: se usa textContent (no innerHTML), así que este campo ya es seguro por diseño.
         document.getElementById('user-name-display').textContent = nombreCompleto;
         document.getElementById('profile-email').value = user.email;
     } catch (e) {
@@ -271,7 +301,6 @@ document.getElementById('btnGuardarPerfil').addEventListener('click', async () =
         mostrarModal("Sesión Expirada", "Por favor inicia sesión nuevamente.", "🔒");
         return;
     }
-
     const nombre = document.getElementById('profile-nombre').value.trim();
     const apellido = document.getElementById('profile-apellido').value.trim();
 
@@ -320,8 +349,7 @@ function switchTab(activeTab) {
         const content = document.getElementById(`content-${tab}`);
         if (btn) btn.classList.remove('active');
         if (content) content.classList.add('hidden');
-    });
-    
+    });    
     const activeBtn = document.getElementById(`tab-${activeTab}`);
     const activeContent = document.getElementById(`content-${activeTab}`);
     if (activeBtn) activeBtn.classList.add('active');
@@ -343,6 +371,7 @@ slider.addEventListener('input', (e) => {
     const amount = parseInt(e.target.value);
     state.montoSeleccionado = amount;
     document.getElementById('amountDisplay').textContent = "$ " + amount.toLocaleString('es-CO') + " COP";
+
     state.multiplicador = amount / 4000;
     document.getElementById('multiplierDisplay').textContent = state.multiplicador.toFixed(1) + "x";
 
@@ -355,9 +384,6 @@ slider.addEventListener('input', (e) => {
 });
 
 // --- SINCRONIZACIÓN API ESPN -> FIRESTORE ---
-// --- Trae y parsea el leaderboard oficial de ESPN (se usa tanto para sincronizar en vivo
-//     como para la liquidación final del torneo). Ahora también captura la POSICIÓN oficial
-//     de cada jugador (no solo el score), necesaria para validar el Top 10 al liquidar. ---
 async function fetchTorneoDesdeESPN() {
     const response = await fetch('https://site.api.espn.com/apis/site/v2/sports/golf/leaderboard');
     const data = await response.json();
@@ -365,25 +391,15 @@ async function fetchTorneoDesdeESPN() {
     const competition = event.competitions && event.competitions[0];
     const compStatus = competition && competition.status;
 
-    // ⚡ OPTIMIZADO: las fechas/horarios OFICIALES del torneo vienen en el tramo EXCLUSIVO del
-    // JSON dedicado a la competencia (event.competitions[0].status.type), ya formateados por ESPN
-    // (ej: detail:"July 30 - August 2", shortDetail:"7/30 - 8/2"). NO hace falta recorrer el
-    // arreglo de jugadores (competitors[].status.teeTime es información POR JUGADOR, no la fecha
-    // oficial del torneo) — eso era innecesario y estaba mal optimizado.
     const rangoFechasTorneo = (compStatus && compStatus.type && (compStatus.type.detail || compStatus.type.shortDetail)) || null;
 
     const torneoData = {
         id: event.id,
         name: event.shortName || event.name,
         course: event.courses ? event.courses[0].name : "PGA Tour Course",
-        // Marcador de fecha (día) del torneo, tal como lo entrega ESPN a nivel de competencia.
         startDate: event.date,
-        // Texto oficial del rango de fechas del torneo, ya formateado por ESPN — no requiere
-        // conversión manual de horas ni loops. Ej: "July 30 - August 2".
         rango_fechas: rangoFechasTorneo,
         status: "ACTIVE",
-        // Estado REAL del torneo según ESPN: 'pre' (no ha empezado), 'in' (en vivo), 'post' (terminó).
-        // Esto es lo que usamos para decidir si mostramos el punto verde de "en vivo" o no.
         estado_vivo: (compStatus && compStatus.type && compStatus.type.state) || 'pre',
         detalle_estado: rangoFechasTorneo,
         updated_at: serverTimestamp(),
@@ -400,8 +416,6 @@ async function fetchTorneoDesdeESPN() {
             displayScore = typeof rawScore === 'object' ? (rawScore.displayValue || "E") : String(rawScore);
         }
 
-        // Posición oficial (ranking real del torneo), no el score crudo.
-        // Ej: position_id = 1, 2, 3... position_display = "1", "T5", "CUT", etc.
         const posId = comp.status && comp.status.position && comp.status.position.id
             ? parseInt(comp.status.position.id)
             : null;
@@ -443,10 +457,6 @@ document.getElementById('btnSyncDb')?.addEventListener('click', async () => {
 
 // =====================================================================
 // --- CALENDARIO DE TORNEOS DEL MES ---
-// Completamente separado del sync del "torneo en curso" de arriba.
-// Esta API (sports.core.api.espn.com) solo nos da fechas y nombres del
-// calendario del PGA Tour — NO tiene el detalle de jugadores/resultados,
-// eso lo sigue trayendo únicamente fetchTorneoDesdeESPN() de arriba.
 // =====================================================================
 const URL_CALENDARIO_ESPN = 'https://sports.core.api.espn.com/v2/sports/golf/leagues/pga/calendar/ondays?lang=en&region=us';
 
@@ -454,7 +464,6 @@ async function fetchCalendarioDelMesESPN() {
     const response = await fetch(URL_CALENDARIO_ESPN);
     const data = await response.json();
 
-    // Confirmado con datos reales de ESPN: el arreglo de torneos viene en "sections".
     let entradas = data.sections || data.calendar || data.entries || data.items || [];
 
     if (!Array.isArray(entradas) || entradas.length === 0) {
@@ -466,11 +475,11 @@ async function fetchCalendarioDelMesESPN() {
     const torneos = entradas.map(item => {
         const id = item.id || null;
         const nombre = item.label || item.name || item.shortName || "Torneo sin nombre";
-        const detalle = item.detail || null; // ej: "Jan 22-25", útil como respaldo
+        const detalle = item.detail || null;
         const inicio = item.startDate || null;
         const fin = item.endDate || null;
         return { id, nombre, detalle, inicio, fin };
-    }).filter(t => t.inicio); // descartamos cualquier entrada sin fecha válida
+    }).filter(t => t.inicio);
 
     if (torneos.length === 0) {
         console.error("fetchCalendarioDelMesESPN: se encontraron entradas pero ninguna con fecha reconocible. Revisa esta muestra:", entradas.slice(0, 2));
@@ -523,8 +532,6 @@ async function cargarCalendarioDelMes() {
 
         const torneos = snap.data().torneos;
         const ahora = new Date();
-        // Normalizamos a medianoche LOCAL para comparar por día calendario, no por hora exacta
-        // (antes esto hacía que dijera "mañana" cuando en realidad faltaban 2 días).
         const hoySinHora = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
         const mesActualNum = ahora.getMonth();
         const anioActualNum = ahora.getFullYear();
@@ -534,13 +541,6 @@ async function cargarCalendarioDelMes() {
             .filter(t => !isNaN(t.inicioDate))
             .sort((a, b) => a.inicioDate - b.inicioDate);
 
-        // 🔧 AJUSTE: si el torneo ACTIVO (el de arriba, con el botón "Elegir equipo e
-        // inscribirme") también aparece en el calendario del mes, lo excluimos de esta lista.
-        // Antes se repetía dos veces en la misma pantalla — arriba decía "ABIERTO" y aquí abajo
-        // "EMPIEZA MAÑANA", generando confusión sobre cuál tarjeta era la real para interactuar.
-        // "Torneos del mes" ahora es puramente informativo: solo muestra OTROS torneos próximos
-        // distintos al que ya está arriba. Comparamos por nombre (normalizado) ya que el ID de
-        // esta API de calendario no coincide con el ID del torneo activo en ESPN.
         const nombreTorneoActivo = (state.torneoActual?.name || '').trim().toLowerCase();
 
         const proximos = conFecha.filter(t => {
@@ -565,29 +565,21 @@ async function cargarCalendarioDelMes() {
         };
         const fechaLarga = (t) => t.detalle || t.inicioDate.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long' });
 
-        // 🔧 AJUSTE: la tarjeta destacada (el próximo torneo de la lista) ya NO muestra una
-        // etiqueta tipo "badge" sólida con "Empieza en X días" — eso competía visualmente con
-        // el badge "ABIERTO" del Torneo Activo de arriba, que es el que de verdad importa.
-        // Ahora simplemente dice "PRÓXIMO" en texto dorado discreto, sin fondo sólido.
+        // 🔒 SEGURIDAD: 'nombre' y 'detalle' vienen de la API pública de ESPN (fuente externa, no
+        // controlada por nuestros usuarios, pero tampoco por nosotros) — se escapan igualmente
+        // por defensa en profundidad antes de insertarlos en el innerHTML de cada tarjeta.
         const tarjetaTorneo = (t, destacado) => `
             <div class="ticket-card ${destacado ? 'torneo-destacado' : ''}" style="margin-bottom:10px;">
                 <div class="ticket-card-header">
-                    <span>${t.nombre}</span>
+                    <span>${escapeHtml(t.nombre)}</span>
                     ${destacado ? `<span class="proximo-label">PRÓXIMO</span>` : `<span style="font-size:11px; color:var(--texto-gris);">${calcularEtiqueta(t.inicioDate)}</span>`}
                 </div>
                 <div class="ticket-card-body">
-                    <p style="margin:0; font-size:12px;">📅 ${fechaLarga(t)}</p>
+                    <p style="margin:0; font-size:12px;">📅 ${escapeHtml(fechaLarga(t))}</p>
                 </div>
             </div>
         `;
 
-        // 🔧 AJUSTE: "Torneos del mes" ahora agrupa por el MES CALENDARIO ACTUAL (hoy), no por
-        // el mes del próximo torneo de la lista. Antes, si el torneo activo era el último de
-        // julio, el próximo de la lista caía en agosto y TODO agosto se mostraba bajo "Torneos
-        // del mes" (título engañoso). Ahora: si no queda ningún torneo próximo dentro del MES
-        // ACTUAL (porque el activo ya es el último de julio, por ejemplo), esta sección completa
-        // se oculta — título, descripción y contenido — y todo pasa directo a "Ver el resto del
-        // año", colapsado, como corresponde.
         const delMesActual = proximos.filter(t =>
             t.inicioDate.getMonth() === mesActualNum && t.inicioDate.getFullYear() === anioActualNum
         );
@@ -641,14 +633,6 @@ async function cargarTorneoDesdeFirestore() {
         if (docSnap.exists()) {
             state.torneoActual = docSnap.data();
 
-            // 🔧 COMPATIBILIDAD: si el documento en Firestore es de una sincronización ANTERIOR
-            // a este arreglo, no tendrá el campo 'rango_fechas'. Las reglas de seguridad de
-            // Firestore (match /tournaments/{id} → allow write: if isAdmin()) NO permiten que un
-            // usuario normal escriba/corrija ese documento — solo el admin puede hacerlo (con el
-            // botón "Sincronizar"). Por eso aquí NUNCA se hace setDoc/write; simplemente se
-            // calcula 'rango_fechas' EN MEMORIA (usando el mismo JSON de ESPN ya obtenido arriba)
-            // para que la interfaz se vea correcta también para usuarios no-admin, sin necesidad
-            // de permisos de escritura ni de tocar la base de datos.
             if (!state.torneoActual.rango_fechas) {
                 const compStatus = event.competitions && event.competitions[0] && event.competitions[0].status;
                 state.torneoActual.rango_fechas = (compStatus && compStatus.type && (compStatus.type.detail || compStatus.type.shortDetail)) || null;
@@ -670,31 +654,13 @@ function actualizarUIەTorneo() {
     document.getElementById('torneo-campo').textContent = state.torneoActual.course;
     document.getElementById('chk-torneo').textContent = state.torneoActual.name;
     
-    // 🔧 AJUSTE: el badge principal (ABIERTO / INICIADO / FINALIZADO) ahora refleja el estado
-    // REAL y en vivo del torneo según ESPN ('estado_vivo': 'pre'/'in'/'post'), no solo si ya
-    // pasó la fecha de inicio. Esto da 3 fases claras, tal como corresponde a un torneo real:
-    //   - ABIERTO    -> aún no arranca, se puede inscribir e interactuar
-    //   - INICIADO   -> el torneo ya está en juego (jueves a domingo); inscripciones cerradas
-    //   - FINALIZADO -> el torneo ya se jugó por completo (domingo), esté o no ya liquidado
-    //                   oficialmente por el admin (status "CLOSED" también cuenta como FINALIZADO)
-    // La semana siguiente, ESPN simplemente reporta un nuevo torneo activo distinto y este
-    // desaparece solo (no requiere lógica extra: fetchTorneoDesdeESPN() ya trae el evento actual).
     const estadoReal = state.torneoActual.estado_vivo || 'pre';
     const yaLiquidado = state.torneoActual.status === "CLOSED";
     const inscripcionCerrada = yaLiquidado || estadoReal !== 'pre';
 
-    // ⚡ OPTIMIZADO: usamos directamente el texto oficial del rango de fechas que ESPN ya trae
-    // listo en el tramo del torneo/competencia ('rango_fechas', ej: "July 30 - August 2"). Nada
-    // de convertir 'event.date' a hora local (ese campo es solo un marcador de día, no una hora
-    // real, y por eso antes se veían horarios absurdos como "11:00 PM").
     if (state.torneoActual.rango_fechas) {
         document.getElementById('torneo-inicio').textContent = "📅 Fechas oficiales: " + state.torneoActual.rango_fechas;
     } else if (state.torneoActual.startDate) {
-        // Respaldo por si ESPN no trajo el texto oficial (rango_fechas). Usamos timeZone:'UTC'
-        // para leer el día TAL COMO lo entrega ESPN (ej. "2026-07-30T04:00Z" = 30 de julio).
-        // 🐛 BUG CORREGIDO: antes se formateaba en la zona horaria LOCAL del navegador, lo cual
-        // restaba horas y hacía que el día se recorriera un día atrás (ej. mostraba "29 de julio"
-        // en vez de "30 de julio", y por eso parecía que el torneo empezaba "hoy" en vez de mañana).
         const fechaSoloDia = new Date(state.torneoActual.startDate);
         document.getElementById('torneo-inicio').textContent = "📅 Inicia: " + fechaSoloDia.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
     } else {
@@ -725,9 +691,6 @@ function actualizarUIەTorneo() {
         btnInscripcion.textContent = "Elegir equipo e inscribirme";
     }
 
-    // Indicador de EN VIVO real (no un punto rojo fijo): solo se enciende verde si
-    // ESPN reporta el torneo como realmente en juego ('in'). Si todavía no arranca
-    // ('pre') mostramos un estado neutral con la fecha; si ya terminó ('post'), otro.
     const dot = document.getElementById('torneo-live-dot');
     const label = document.getElementById('torneo-live-label');
     if (dot && label) {
@@ -741,11 +704,6 @@ function actualizarUIەTorneo() {
             label.style.color = 'var(--texto-gris)';
         } else {
             dot.className = 'pending-dot';
-            // 🔧 AJUSTE: ya no repetimos aquí el rango de fechas del torneo (ej. "Comienza:
-            // July 30 - August 2"), porque esa misma información ya se muestra justo debajo,
-            // dentro de la tarjeta del torneo ("📅 Fechas oficiales: ..."). Repetirla dos veces
-            // en la misma pantalla era redundante, así que este subtítulo ahora solo indica el
-            // ESTADO (aún no comienza / en vivo / terminado), sin duplicar la fecha.
             label.textContent = 'Aún no comienza';
             label.style.color = 'var(--texto-gris)';
         }
@@ -789,17 +747,6 @@ async function cargarMisApuestas(userId) {
                 ? `<button class="btn-outline btn-small btn-editar" data-id="${betId}">Modificar Equipo</button>`
                 : `<span style="font-size:11px; color:var(--rojo-alerta); font-weight:600;">🔒 Edición bloqueada (< 1h o torneo cerrado)</span>`;
 
-            // 🗑️ Eliminar apuesta: solo se permite si el usuario aún puede modificar (mismo
-            // límite de tiempo que "Modificar Equipo": antes de 1h del inicio y torneo no cerrado)
-            // Y si el pago todavía NO ha sido confirmado por el admin. Una vez el pago está
-            // "APPROVED" ya no se puede auto-eliminar desde aquí (para proteger la contabilidad);
-            // en ese caso el usuario debe contactar al admin para gestionar el reembolso/baja.
-            // ⚠️ IMPORTANTE: esto requiere que las reglas de Firestore permitan al dueño de la
-            // apuesta borrar su propio documento mientras esté PENDIENTE (ver nota de reglas).
-            // 🔧 FIX LAYOUT: el botón ya NO lleva margin-left inline (chocaba con el width:100%
-            // global de <button>, causando que se viera corrido/desbordado). Ahora ambos botones
-            // van dentro de un contenedor flex (.ticket-card-actions-row) que los reparte en fila
-            // con flex:1 cada uno, de forma pareja y sin desbordes.
             const puedeEliminar = sePuedeModificar && bet.payment_status !== "APPROVED";
             let botonEliminarHtml = puedeEliminar
                 ? `<button class="btn-outline btn-small btn-danger-outline btn-eliminar-apuesta" data-id="${betId}">🗑️ Eliminar</button>`
@@ -817,16 +764,19 @@ async function cargarMisApuestas(userId) {
                 estadoPuntosHtml = `<p style="margin:0 0 4px 0; font-size:12px; color:var(--texto-gris);">⏳ Torneo en curso — los puntos se asignan solo al liquidarse, validando el Top 10 oficial.</p>`;
             }
 
+            // 🔒 SEGURIDAD: bet.tournament_name y jugadoresNombres se escapan antes de insertarse.
+            // Los nombres de jugadores vienen de ESPN (externos, no controlados por el usuario),
+            // pero se escapan igual por defensa en profundidad.
             card.innerHTML = `
                 <div class="ticket-card-header">
-                    <span>${bet.tournament_name}</span>
+                    <span>${escapeHtml(bet.tournament_name)}</span>
                     <span style="color:var(--verde-fairway)">$${bet.amount_cop.toLocaleString('es-CO')}</span>
                 </div>
                 <div class="ticket-card-body">
                     <p style="margin:0 0 6px 0;"><span class="payment-badge ${estadoPago}">${estadoPagoLabel}</span></p>
                     ${estadoPuntosHtml}
                     <p style="margin:0 0 4px 0;"><strong>Multiplicador:</strong> ${bet.multiplier}x</p>
-                    <p style="margin:0 0 10px 0;"><strong>Equipo:</strong> ${jugadoresNombres}</p>
+                    <p style="margin:0 0 10px 0;"><strong>Equipo:</strong> ${escapeHtml(jugadoresNombres)}</p>
                     <div class="ticket-card-actions-row">${botonEditarHtml}${botonEliminarHtml}</div>
                 </div>
             `;
@@ -839,12 +789,6 @@ async function cargarMisApuestas(userId) {
             });
         });
 
-        // 🗑️ Eliminar apuesta (baja de participación). Requiere que las reglas de Firestore
-        // permitan "allow delete" al dueño de la apuesta mientras payment_status == "PENDIENTE"
-        // (ver nota de reglas más abajo) — de lo contrario Firestore rechazará el borrado con
-        // "Missing or insufficient permissions", igual que ocurrió antes con /tournaments.
-        // 🔧 FIX: se reemplazó el confirm() nativo del navegador (feo, genérico) por el modal
-        // "WOW" propio de la app (mostrarConfirmacion), consistente con el resto de la interfaz.
         document.querySelectorAll('.btn-eliminar-apuesta').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const betId = e.target.dataset.id;
@@ -919,57 +863,34 @@ async function cargarRanking() {
             return;
         }
 
-        // 🐛 BUG CORREGIDO: antes este Leaderboard calculaba un puntaje "en vivo" propio con una
-        // fórmula distinta a la oficial, y encima forzaba un PISO de 10 puntos siempre
-        // (Math.max(10, basePoints * multiplier)) — por eso TODOS mostraban "10 pts" incluso con
-        // el torneo sin comenzar. Eso viola la regla del juego: los puntos SOLO existen cuando el
-        // admin liquida el torneo (botón "Liquidar") y valida el Top 10 oficial de cada jugador.
-        //
-        // Ahora este Leaderboard ya NO recalcula nada por su cuenta: simplemente MUESTRA los
-        // puntos oficiales que ya quedaron guardados en cada apuesta (bet.points / bet.settled)
-        // por la función de liquidación — la misma fuente de verdad que usa la pestaña
-        // "Mis apuestas". Si el torneo activo aún no fue liquidado, no se muestra ningún puntaje.
         if (state.torneoActual.status !== "CLOSED") {
             container.innerHTML = `<div class="empty-state">⏳ El torneo activo aún no ha finalizado ni ha sido liquidado por el administrador. Los puntos oficiales aparecerán aquí una vez se cierre el torneo y se valide el Top 10.</div>`;
             return;
         }
 
-        const usersSnap = await getDocs(collection(db, "users"));
-        let usersMap = {};
-        usersSnap.forEach(uDoc => {
-            const uData = uDoc.data();
-            usersMap[uDoc.id] = `${uData.nombre || ''} ${uData.apellido || ''}`.trim() || uDoc.id;
-        });
-
+        // 🔒 SEGURIDAD: el Leaderboard YA NO lee la colección "bets" directamente. Esa colección
+        // contiene datos sensibles de TODOS los usuarios (monto apostado, número de referencia de
+        // pago, etc.) y ahora está restringida por reglas de Firestore a "solo el dueño o el
+        // admin". En su lugar, este Leaderboard lee "leaderboard_entries" — una colección PÚBLICA
+        // de solo lectura, generada por el admin al liquidar el torneo, que contiene ÚNICAMENTE
+        // los campos seguros para mostrar (nombre, equipo, puntos, multiplicador).
         const q = query(
-            collection(db, "bets"),
-            where("tournament_id", "==", state.torneoActual.id),
-            where("settled", "==", true)
+            collection(db, "leaderboard_entries"),
+            where("tournament_id", "==", state.torneoActual.id)
         );
         const querySnapshot = await getDocs(q);
 
-        let usuariosMap = {};
-
-        querySnapshot.forEach((doc) => {
-            const bet = doc.data();
-            // Puntos oficiales, ya validados contra el Top 10 real por la liquidación del admin.
-            // No se recalcula nada aquí — se toma tal cual quedó guardado (fuente única de verdad).
-            let totalPoints = Number(bet.points) || 0;
-
-            let userId = bet.user_id;
-            let nombreUsuario = usersMap[userId] || bet.user_email.split('@')[0];
-
-            if (!usuariosMap[userId] || totalPoints > usuariosMap[userId].points) {
-                usuariosMap[userId] = {
-                    user: nombreUsuario,
-                    team: bet.roster.map(p => p.name).join(', '),
-                    points: totalPoints,
-                    multiplier: bet.multiplier
-                };
-            }
+        let ranking = [];
+        querySnapshot.forEach((docSnap) => {
+            const entry = docSnap.data();
+            ranking.push({
+                user: entry.user_display_name || 'Jugador',
+                team: entry.team || '',
+                points: Number(entry.points) || 0,
+                multiplier: entry.multiplier || 1
+            });
         });
 
-        let ranking = Object.values(usuariosMap);
         ranking.sort((a, b) => b.points - a.points);
 
         if (ranking.length === 0) {
@@ -983,11 +904,15 @@ async function cargarRanking() {
             let medal = position === 1 ? '🥇' : position === 2 ? '🥈' : position === 3 ? '🥉' : position;
             const div = document.createElement('div');
             div.className = 'ranking-item';
+            // 🔒 SEGURIDAD: 'entry.user' proviene del nombre de perfil, que CUALQUIER usuario
+            // puede editar libremente desde "Mi Perfil" -- sin este escape, alguien podría
+            // inyectar HTML/JS en su propio nombre y ese código se ejecutaría en el navegador
+            // de TODOS los que vean el Leaderboard, incluido el administrador.
             div.innerHTML = `
                 <div class="rank-position">${medal}</div>
                 <div class="rank-info">
-                    <div class="rank-name">${entry.user}</div>
-                    <div class="rank-team">${entry.team}</div>
+                    <div class="rank-name">${escapeHtml(entry.user)}</div>
+                    <div class="rank-team">${escapeHtml(entry.team)}</div>
                 </div>
                 <div class="rank-points">
                     ${Math.round(entry.points).toLocaleString('es-CO')} pts
@@ -1032,7 +957,6 @@ async function cargarPanelAdmin() {
         document.getElementById('admin-utilidad').textContent = "$ " + Math.round(margenUtilidad).toLocaleString('es-CO') + " COP";
         document.getElementById('admin-bolsa').textContent = "$ " + Math.round(bolsaNeta).toLocaleString('es-CO') + " COP";
 
-        // --- Pagos pendientes de confirmar (dinero real que el admin debe verificar manualmente) ---
         const pendContainer = document.getElementById('admin-pagos-pendientes-list');
         if (pendContainer) {
             pendContainer.innerHTML = '';
@@ -1042,16 +966,21 @@ async function cargarPanelAdmin() {
                 pagosPendientes.forEach(item => {
                     const div = document.createElement('div');
                     div.className = 'ticket-card';
+                    // 🔒 SEGURIDAD CRÍTICA: 'item.referencia' es TEXTO LIBRE que cualquier usuario
+                    // escribe él mismo en el checkout (campo "Número de referencia"). Sin escapar,
+                    // esto es un vector de XSS almacenado directo contra el ADMINISTRADOR: alguien
+                    // podría poner código malicioso ahí y este se ejecutaría en el navegador del
+                    // admin justo al revisar "Pagos por Confirmar".
                     const refHtml = item.referencia
-                        ? `<p style="margin:0 0 8px 0; font-size:12px;"><strong>Referencia:</strong> ${item.referencia}</p>`
+                        ? `<p style="margin:0 0 8px 0; font-size:12px;"><strong>Referencia:</strong> ${escapeHtml(item.referencia)}</p>`
                         : `<p style="margin:0 0 8px 0; font-size:11.5px; color:var(--texto-gris);">Sin número de referencia — verifica por monto y nombre.</p>`;
                     div.innerHTML = `
                         <div class="ticket-card-header">
-                            <span style="font-size:12px;">${item.email}</span>
+                            <span style="font-size:12px;">${escapeHtml(item.email)}</span>
                             <span style="color:var(--verde-fairway)">$${item.monto.toLocaleString('es-CO')}</span>
                         </div>
                         <div class="ticket-card-body">
-                            <p style="margin:0 0 4px 0; font-size:12px;"><strong>Torneo:</strong> ${item.torneo}</p>
+                            <p style="margin:0 0 4px 0; font-size:12px;"><strong>Torneo:</strong> ${escapeHtml(item.torneo)}</p>
                             ${refHtml}
                             <button class="btn-outline btn-small btn-confirmar-pago" data-id="${item.id}">✔️ Confirmar pago recibido</button>
                         </div>
@@ -1076,7 +1005,6 @@ async function cargarPanelAdmin() {
             }
         }
 
-        // --- Premios reclamados: salud de la bolsa + gestión real ---
         const claimsSnap = await getDocs(collection(db, "claims"));
         const claims = [];
         claimsSnap.forEach(d => claims.push({ id: d.id, ...d.data() }));
@@ -1101,7 +1029,6 @@ async function cargarPanelAdmin() {
 
         const container = document.getElementById('admin-premios-list');
         container.innerHTML = '';
-
         const claimsPendientes = claims.filter(c => c.status === "pendiente");
 
         if (claimsPendientes.length === 0) {
@@ -1112,13 +1039,16 @@ async function cargarPanelAdmin() {
         claimsPendientes.forEach(item => {
             const div = document.createElement('div');
             div.className = 'ticket-card';
+            // 🔒 SEGURIDAD: item.user_email (Firebase Auth valida su formato, riesgo bajo) e
+            // item.item_name (nombre del premio, controlado por el admin al crearlo, riesgo bajo)
+            // se escapan igual por consistencia y defensa en profundidad.
             div.innerHTML = `
                 <div class="ticket-card-header">
-                    <span style="font-size:12px;">${item.user_email}</span>
+                    <span style="font-size:12px;">${escapeHtml(item.user_email)}</span>
                     <span style="color:var(--dorado); font-size:11px;">$${(item.item_price || 0).toLocaleString('es-CO')}</span>
                 </div>
                 <div class="ticket-card-body">
-                    <p style="margin:0 0 10px 0; font-size:12px;">🎁 <strong>Premio:</strong> ${item.item_name}</p>
+                    <p style="margin:0 0 10px 0; font-size:12px;">🎁 <strong>Premio:</strong> ${escapeHtml(item.item_name)}</p>
                     <div style="display:flex; gap:8px;">
                         <button class="btn-outline btn-small btn-entregar-premio" data-id="${item.id}" style="flex:1;">✔️ Entregado</button>
                         <button class="btn-outline btn-small btn-rechazar-premio" data-id="${item.id}" style="flex:1; border-color:var(--rojo-alerta); color:var(--rojo-alerta);">✖️ Rechazar</button>
@@ -1170,12 +1100,9 @@ document.getElementById('btnLiquidarTorneo')?.addEventListener('click', async ()
     btn.disabled = true;
 
     try {
-        // 1) Traemos el resultado FINAL oficial (con posición real de cada jugador), no el score en vivo.
         const torneoFinal = await fetchTorneoDesdeESPN();
         torneoFinal.status = "CLOSED";
 
-        // Chequeo de seguridad: si ESPN no nos dio ninguna posición válida, algo cambió en su formato
-        // de respuesta. Mejor avisar y detener la liquidación que repartir 0 puntos a todo el mundo.
         const conPosicionValida = (torneoFinal.players || []).some(p => p.position_id !== null);
         if (!conPosicionValida) {
             mostrarModal(
@@ -1193,18 +1120,21 @@ document.getElementById('btnLiquidarTorneo')?.addEventListener('click', async ()
         state.torneoActual = torneoFinal;
         actualizarUIەTorneo();
 
-        // Mapa rápido: id de jugador -> posición oficial final
         const posicionPorJugador = {};
         (torneoFinal.players || []).forEach(p => { posicionPorJugador[p.id] = p.position_id; });
 
-        // 2) Solo las apuestas con PAGO CONFIRMADO de este torneo reciben puntos.
-        //    Las pendientes de pago quedan en 0 (no cuentan, como debe ser).
         const betsQ = query(
             collection(db, "bets"),
             where("tournament_id", "==", torneoFinal.id),
             where("payment_status", "==", "APPROVED")
         );
         const betsSnap = await getDocs(betsQ);
+
+        // 🔒 SEGURIDAD: aquí armamos SOLO los datos públicos/seguros del Leaderboard (nombre,
+        // equipo, puntos, multiplicador) — nunca amount_cop ni payment_reference. Se guarda la
+        // MEJOR apuesta liquidada por usuario, igual que hacía antes cargarRanking() al leer
+        // "bets" directamente (mismo criterio, ahora aplicado UNA sola vez al liquidar).
+        let mejorPorUsuario = {};
 
         let actualizadas = 0;
         for (const betDoc of betsSnap.docs) {
@@ -1221,6 +1151,39 @@ document.getElementById('btnLiquidarTorneo')?.addEventListener('click', async ()
                 settled_at: serverTimestamp()
             });
             actualizadas++;
+
+            const equipoTexto = (bet.roster || []).map(p => p.name).join(', ');
+            if (!mejorPorUsuario[bet.user_id] || puntosFinales > mejorPorUsuario[bet.user_id].points) {
+                mejorPorUsuario[bet.user_id] = {
+                    user_email: bet.user_email,
+                    team: equipoTexto,
+                    points: puntosFinales,
+                    multiplier: bet.multiplier || 1
+                };
+            }
+        }
+
+        // Buscamos los nombres de perfil reales (el admin sí tiene permiso de leer toda la
+        // colección "users") para mostrar "Nombre Apellido" en el Leaderboard en vez del correo.
+        const usersSnap = await getDocs(collection(db, "users"));
+        let nombresMap = {};
+        usersSnap.forEach(uDoc => {
+            const uData = uDoc.data();
+            nombresMap[uDoc.id] = `${uData.nombre || ''} ${uData.apellido || ''}`.trim();
+        });
+
+        for (const userId of Object.keys(mejorPorUsuario)) {
+            const entry = mejorPorUsuario[userId];
+            const nombreDisplay = nombresMap[userId] || (entry.user_email ? entry.user_email.split('@')[0] : 'Jugador');
+            await setDoc(doc(db, "leaderboard_entries", `${torneoFinal.id}_${userId}`), {
+                tournament_id: torneoFinal.id,
+                user_id: userId,
+                user_display_name: nombreDisplay,
+                team: entry.team,
+                points: entry.points,
+                multiplier: entry.multiplier,
+                updated_at: serverTimestamp()
+            });
         }
 
         mostrarModal(
@@ -1238,8 +1201,6 @@ document.getElementById('btnLiquidarTorneo')?.addEventListener('click', async ()
 });
 
 // --- CALCULAR PUNTOS REALES DEL USUARIO ---
-// Solo cuentan apuestas: 1) con pago confirmado, Y 2) de un torneo ya LIQUIDADO (settled: true).
-// Si el torneo sigue en curso, esa apuesta simplemente no aparece aquí todavía = 0 puntos, como debe ser.
 async function calcularMisPuntos(userId) {
     const q = query(
         collection(db, "bets"),
@@ -1258,11 +1219,8 @@ async function calcularMisPuntos(userId) {
     return Math.round(total);
 }
 
-// --- CARGAR PREMIOS (fotos y precios reales, puntos calculados automáticamente) ---
-//
-// ⚙️ TASA DE CAMBIO PUNTOS → PESOS ahora vive en Firestore (colección "config", doc "puntos",
-// campo "pesos_por_punto"), editable desde el panel Admin — nada de tocar código para cambiarla.
-let PESOS_POR_PUNTO = 45; // valor de respaldo mientras carga el real desde Firestore
+// --- CARGAR PREMIOS ---
+let PESOS_POR_PUNTO = 45;
 
 async function cargarConfigPuntos() {
     try {
@@ -1279,8 +1237,6 @@ function puntosRequeridos(item) {
     return Math.ceil((item.precio_real || 0) / PESOS_POR_PUNTO);
 }
 
-// El catálogo ahora vive 100% en Firestore (colección "premios") — se administra desde el
-// panel Admin (agregar / editar / eliminar / subir foto), nunca hay que tocar la base de datos.
 async function obtenerCatalogoPremios() {
     const snap = await getDocs(collection(db, "premios"));
     const items = [];
@@ -1335,7 +1291,6 @@ async function cargarPremios(userId) {
                 : "¡Ya alcanzaste todos los premios disponibles!";
         }
 
-        // Consulta si el usuario ya reclamó cada premio, para no mostrar el botón dos veces
         let misClaims = [];
         try {
             const claimsSnap = await getDocs(query(collection(db, "claims"), where("user_id", "==", userId)));
@@ -1354,11 +1309,14 @@ async function cargarPremios(userId) {
             div.className = 'reward-card';
 
             const tieneImagenValida = !!item.imagen;
-
+            // 🔒 SEGURIDAD: item.nombre (nombre del premio) es controlado por el admin al crearlo
+            // en el panel — riesgo bajo, pero se escapa igual por defensa en profundidad, tanto
+            // en el texto visible como en el atributo alt="" (una inyección de comillas ahí
+            // podría romper el atributo e insertar HTML/atributos arbitrarios).
             div.innerHTML = `
                 <div class="reward-photo-wrap ${alcanzado ? '' : 'locked'}">
                     ${tieneImagenValida
-                        ? `<img src="${item.imagen}" alt="${item.nombre}" onerror="this.style.display='none'; this.parentElement.querySelector('.reward-photo-fallback').style.display='flex';">`
+                        ? `<img src="${item.imagen}" alt="${escapeHtml(item.nombre)}">`
                         : ''
                     }
                     <div class="reward-photo-fallback" style="${tieneImagenValida ? 'display:none;' : ''}">
@@ -1372,7 +1330,7 @@ async function cargarPremios(userId) {
                     ${!alcanzado ? `<span class="reward-lock-badge">🔒</span>` : ''}
                 </div>
                 <div class="reward-body">
-                    <div class="reward-name">${item.nombre}</div>
+                    <div class="reward-name">${escapeHtml(item.nombre)}</div>
                     <div class="reward-price-row">
                         <span class="reward-price-real">Valor real: $${(item.precio_real || 0).toLocaleString('es-CO')}</span>
                         <span class="reward-pts">${req.toLocaleString('es-CO')} pts</span>
@@ -1386,6 +1344,19 @@ async function cargarPremios(userId) {
                     </button>
                 </div>
             `;
+
+            // 🔧 SEGURIDAD (defensa en profundidad con CSP estricta): antes el fallback de imagen
+            // rota usaba un atributo inline onerror="..." en el HTML. Un Content-Security-Policy
+            // estricto (sin 'unsafe-inline' en script-src) BLOQUEA los manejadores de eventos
+            // inline, así que ahora se enganchan aquí con addEventListener en JavaScript real.
+            const imgEl = div.querySelector('.reward-photo-wrap img');
+            if (imgEl) {
+                imgEl.addEventListener('error', () => {
+                    imgEl.style.display = 'none';
+                    const fallback = div.querySelector('.reward-photo-fallback');
+                    if (fallback) fallback.style.display = 'flex';
+                }, { once: true });
+            }
 
             div.querySelector('.btn-redimir').addEventListener('click', async () => {
                 if (!alcanzado || yaReclamado) return;
@@ -1415,21 +1386,19 @@ async function cargarPremios(userId) {
 }
 
 // =====================================================================
-// --- GESTIÓN DE PREMIOS DESDE EL PANEL ADMIN (CRUD completo, sin tocar la BD) ---
+// --- GESTIÓN DE PREMIOS DESDE EL PANEL ADMIN ---
 // =====================================================================
-
-let premioEditandoId = null; // null = creando uno nuevo; si no, estamos editando ese id
-let imagenSubidaUrl = null;  // URL resultante tras subir la foto a Firebase Storage
+let premioEditandoId = null;
+let imagenSubidaUrl = null;
 
 async function cargarGestionPremiosAdmin() {
-    // Tasa de cambio puntos -> pesos
     await cargarConfigPuntos();
     const inputTasa = document.getElementById('admin-tasa-puntos');
     if (inputTasa) inputTasa.value = PESOS_POR_PUNTO;
 
-    // Lista de premios existentes
     const listContainer = document.getElementById('admin-premios-crud-list');
     if (!listContainer) return;
+
     listContainer.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
 
     try {
@@ -1445,9 +1414,10 @@ async function cargarGestionPremiosAdmin() {
             const req = puntosRequeridos(item);
             const div = document.createElement('div');
             div.className = 'ticket-card';
+            // 🔒 SEGURIDAD: item.nombre se escapa aquí también (defensa en profundidad).
             div.innerHTML = `
                 <div class="ticket-card-header">
-                    <span style="font-size:12px;">${item.nombre}</span>
+                    <span style="font-size:12px;">${escapeHtml(item.nombre)}</span>
                     <span style="color:var(--dorado); font-size:11px;">${req.toLocaleString('es-CO')} pts</span>
                 </div>
                 <div class="ticket-card-body">
@@ -1467,15 +1437,24 @@ async function cargarGestionPremiosAdmin() {
                 if (item) cargarPremioEnFormulario(item);
             });
         });
+
         document.querySelectorAll('.btn-eliminar-premio').forEach(btn => {
             btn.addEventListener('click', async () => {
-                if (!confirm("¿Eliminar este premio del catálogo? Esta acción no se puede deshacer.")) return;
-                try {
-                    await deleteDoc(doc(db, "premios", btn.dataset.id));
-                    mostrarModal("Premio Eliminado", "Se quitó del catálogo.", "🗑️", () => cargarGestionPremiosAdmin());
-                } catch (e) {
-                    mostrarModal("Error", "No se pudo eliminar el premio.", "❌");
-                }
+                // 🔧 Reemplazado el confirm() nativo por el modal "WOW" de la app, consistente
+                // con el resto de confirmaciones destructivas.
+                mostrarConfirmacion(
+                    "¿Eliminar este premio?",
+                    "Esta acción no se puede deshacer. El premio se quitará del catálogo para todos los jugadores.",
+                    async () => {
+                        try {
+                            await deleteDoc(doc(db, "premios", btn.dataset.id));
+                            mostrarModal("Premio Eliminado", "Se quitó del catálogo.", "🗑️", () => cargarGestionPremiosAdmin());
+                        } catch (e) {
+                            mostrarModal("Error", "No se pudo eliminar el premio.", "❌");
+                        }
+                    },
+                    "🗑️"
+                );
             });
         });
     } catch (e) {
@@ -1487,6 +1466,7 @@ async function cargarGestionPremiosAdmin() {
 function cargarPremioEnFormulario(item) {
     premioEditandoId = item.id;
     imagenSubidaUrl = item.imagen || null;
+
     document.getElementById('premio-form-titulo').textContent = "Editando: " + item.nombre;
     document.getElementById('premio-nombre').value = item.nombre || '';
     document.getElementById('premio-precio').value = item.precio_real || '';
@@ -1530,11 +1510,8 @@ function actualizarPuntosPreview() {
         el.textContent = precio > 0 ? `= ${pts.toLocaleString('es-CO')} pts requeridos` : '';
     }
 }
-
 document.getElementById('premio-precio')?.addEventListener('input', actualizarPuntosPreview);
 
-// Comprime y convierte la foto a una imagen pequeña en base64 (texto), para poder guardarla
-// directo en Firestore sin necesitar Firebase Storage (que ahora exige plan de pago Blaze).
 function comprimirImagenAFoto(file, maxLado = 800, calidad = 0.72) {
     return new Promise((resolve, reject) => {
         const lector = new FileReader();
@@ -1542,8 +1519,6 @@ function comprimirImagenAFoto(file, maxLado = 800, calidad = 0.72) {
             const img = new Image();
             img.onload = () => {
                 let { width, height } = img;
-                // Se limita por el lado MÁS LARGO (sirve igual para fotos horizontales
-                // que verticales/de celular en modo retrato) — antes solo miraba el ancho.
                 const ladoMayor = Math.max(width, height);
                 if (ladoMayor > maxLado) {
                     const factor = maxLado / ladoMayor;
@@ -1565,16 +1540,16 @@ function comprimirImagenAFoto(file, maxLado = 800, calidad = 0.72) {
 }
 
 let procesandoImagenPremio = false;
-
 document.getElementById('premio-imagen-file')?.addEventListener('change', async (e) => {
     const file = e.target.files[0];
     if (!file) return;
+
     const statusEl = document.getElementById('premio-imagen-status');
     procesandoImagenPremio = true;
     if (statusEl) statusEl.textContent = "⏳ Procesando foto, espera un momento...";
+
     try {
         const dataUrl = await comprimirImagenAFoto(file);
-        // Chequeo de tamaño: Firestore permite máximo ~1MB por documento completo.
         const pesoKB = Math.round((dataUrl.length * 3 / 4) / 1024);
         if (pesoKB > 700) {
             if (statusEl) statusEl.textContent = `⚠️ La foto quedó muy pesada (${pesoKB}KB). Prueba con una foto más simple, de menor resolución, o recórtala antes de subirla.`;
@@ -1670,35 +1645,35 @@ let filtroJugadorActual = '';
 function renderizarJugadores() {
     const listContainer = document.getElementById('player-list');
     listContainer.innerHTML = '';
-
     if (!state.torneoActual || !state.torneoActual.players) return;
 
     const termino = filtroJugadorActual.trim().toLowerCase();
-
     const jugadoresOrdenados = [...state.torneoActual.players]
         .filter(p => !termino || p.name.toLowerCase().includes(termino))
         .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 
     if (jugadoresOrdenados.length === 0) {
-        listContainer.innerHTML = `<div class="empty-state" style="padding:16px; font-size:12px;">No hay jugadores que coincidan con "${filtroJugadorActual}".</div>`;
+        listContainer.innerHTML = `<div class="empty-state" style="padding:16px; font-size:12px;">No hay jugadores que coincidan con "${escapeHtml(filtroJugadorActual)}".</div>`;
         return;
     }
 
     jugadoresOrdenados.forEach(player => {
         const div = document.createElement('div');
         div.className = 'player-item';
-
         const yaSeleccionado = state.jugadoresSeleccionados.some(p => p.id === player.id);
         if (yaSeleccionado) {
             div.classList.add('selected');
         }
 
         const tieneFoto = !!player.photo;
+        // 🔒 SEGURIDAD: player.name/player.score vienen de la API de ESPN (fuente externa, no
+        // controlada por nuestros usuarios) — se escapan igual por defensa en profundidad,
+        // tanto en el texto visible como en el atributo alt="".
         div.innerHTML = `
             <div class="player-info-container">
                 <div class="player-photo-wrap">
                     ${tieneFoto
-                        ? `<img src="${player.photo}" alt="${player.name}" class="player-photo" onerror="this.onerror=null; this.style.display='none'; this.nextElementSibling.style.display='flex';">`
+                        ? `<img src="${player.photo}" alt="${escapeHtml(player.name)}" class="player-photo">`
                         : ''
                     }
                     <div class="player-photo-fallback" style="${tieneFoto ? 'display:none;' : ''}">
@@ -1709,36 +1684,40 @@ function renderizarJugadores() {
                     </div>
                 </div>
                 <div>
-                    <span class="player-name">${player.name}</span>
-                    <span class="player-score">Score: <strong>${player.score}</strong></span>
+                    <span class="player-name">${escapeHtml(player.name)}</span>
+                    <span class="player-score">Score: <strong>${escapeHtml(player.score)}</strong></span>
                 </div>
             </div>
         `;
 
+        // 🔧 Fallback de foto rota vía addEventListener (compatible con CSP estricta sin
+        // 'unsafe-inline' en script-src), en vez del atributo onerror="..." inline anterior.
+        const imgEl = div.querySelector('.player-photo');
+        if (imgEl) {
+            imgEl.addEventListener('error', () => {
+                imgEl.style.display = 'none';
+                const fallback = div.querySelector('.player-photo-fallback');
+                if (fallback) fallback.style.display = 'flex';
+            }, { once: true });
+        }
+
         div.addEventListener('click', () => {
             const index = state.jugadoresSeleccionados.findIndex(p => p.id === player.id);
-
             if (index > -1) {
-                // Ya estaba en el equipo -> lo quitamos
                 state.jugadoresSeleccionados.splice(index, 1);
             } else if (state.jugadoresSeleccionados.length < state.cuposTotales) {
-                // Hay cupo libre -> lo agregamos directo
                 state.jugadoresSeleccionados.push(player);
             } else if (state.cuposTotales === 1) {
-                // Solo puede tener 1 jugador -> con tocar otro simplemente lo reemplaza
                 state.jugadoresSeleccionados = [player];
             } else {
-                // Equipo lleno con más de 1 cupo -> reemplaza el ÚLTIMO que había elegido,
-                // así el usuario puede simplemente ir tocando nuevos jugadores sin tener
-                // que ir a buscar manualmente a quién desmarcar primero.
                 state.jugadoresSeleccionados.pop();
                 state.jugadoresSeleccionados.push(player);
             }
-
             renderizarJugadores();
             renderRosterChips();
             actualizarEstadoBotonRoster();
         });
+
         listContainer.appendChild(div);
     });
 }
@@ -1759,7 +1738,8 @@ function renderRosterChips() {
     state.jugadoresSeleccionados.forEach(player => {
         const chip = document.createElement('span');
         chip.className = 'roster-chip';
-        chip.innerHTML = `${player.name} <button type="button" class="roster-chip-remove" aria-label="Quitar">×</button>`;
+        // 🔒 SEGURIDAD: player.name (ESPN) escapado por defensa en profundidad.
+        chip.innerHTML = `${escapeHtml(player.name)} <button type="button" class="roster-chip-remove" aria-label="Quitar">×</button>`;
         chip.querySelector('.roster-chip-remove').addEventListener('click', () => {
             const index = state.jugadoresSeleccionados.findIndex(p => p.id === player.id);
             if (index > -1) state.jugadoresSeleccionados.splice(index, 1);
@@ -1797,9 +1777,11 @@ document.getElementById('btnIrCheckout').addEventListener('click', () => {
     equipoList.innerHTML = '';
     state.jugadoresSeleccionados.forEach(player => {
         const li = document.createElement('li');
-        li.innerHTML = `<span>${player.name}</span>`;
+        // 🔒 SEGURIDAD: player.name (ESPN) escapado por defensa en profundidad.
+        li.innerHTML = `<span>${escapeHtml(player.name)}</span>`;
         equipoList.appendChild(li);
     });
+
     document.getElementById('chk-referencia').value = state.editandoTicketId ? (state.referenciaExistente || '') : '';
     showScreen('checkout');
 });
@@ -1810,7 +1792,6 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
         mostrarModal("Torneo Cerrado", "No se pueden procesar apuestas en un torneo finalizado.", "🔒");
         return;
     }
-
     const btn = document.getElementById('btnPagarBold');
     btn.innerHTML = '<span class="spinner"></span> Guardando inscripción...'; 
     btn.disabled = true;
@@ -1842,6 +1823,11 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
                 roster: state.jugadoresSeleccionados,
                 payment_status: "PENDIENTE", 
                 payment_reference: referencia,
+                // 🔒 SEGURIDAD: points y settled SIEMPRE se crean en 0/false. Las reglas de
+                // Firestore ahora EXIGEN estos valores exactos al crear (además de user_id y
+                // payment_status), cerrando el hueco por el cual alguien podía forjar puntos
+                // ganadores directamente desde la consola del navegador, sin pagar ni ser
+                // aprobado por el administrador.
                 points: 0,
                 settled: false,
                 created_at: serverTimestamp()
