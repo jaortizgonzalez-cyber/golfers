@@ -69,8 +69,6 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
 
 /* -----------------------------------------
    ENCABEZADO / NAVEGACIÓN
-   Desktop: barra horizontal normal.
-   Móvil: hamburguesa + panel lateral.
    ----------------------------------------- */
 .app-header {
     display: flex;
@@ -95,7 +93,6 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
     background: var(--verde-fairway); color: var(--dorado-suave);
     display: flex; align-items: center; justify-content: center; font-size: 16px;
     border: 1px solid var(--dorado); flex-shrink: 0;
-    /* 🖼️ Ahora es una <img> (logo real), no un emoji: recorte limpio y centrado dentro del círculo */
     object-fit: cover; object-position: center; padding: 0;
 }
 .brand-name {
@@ -103,7 +100,6 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
     color: var(--verde-fairway); letter-spacing: 0.3px; white-space: nowrap;
 }
 
-/* Nav: full row below brand/user, wraps instead of clipping on desktop */
 .nav-tabs {
     display: flex;
     align-items: center;
@@ -142,7 +138,6 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
 .btn-logout-link { background: transparent; border: none; color: #9A9385; font-size: 11px; text-decoration: underline; padding: 0; cursor: pointer; white-space: nowrap; width: auto; margin-bottom: 0; transition: color 0.2s; }
 .btn-logout-link:hover { color: var(--texto-oscuro); }
 
-/* Hamburger button — hidden on desktop */
 .hamburger-btn {
     display: none;
     flex-direction: column;
@@ -174,22 +169,6 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
     .hamburger-btn { display: flex; }
     .mobile-menu-overlay { display: block; }
     .user-greeting-box { display: none; }
-
-    .nav-tabs {
-        position: fixed; top: 0; right: -85%; width: 78%; max-width: 300px; height: 100vh;
-        background: var(--verde-oscuro); flex-direction: column; align-items: stretch;
-        justify-content: flex-start; padding: 76px 20px 24px; gap: 2px;
-        transition: right 0.3s ease; z-index: 999; overflow-y: auto; flex-wrap: nowrap;
-    }
-    .nav-tabs.open { right: 0; box-shadow: -18px 0 40px rgba(0,0,0,0.25); }
-
-    .tab-btn {
-        color: rgba(247,245,238,0.72); text-align: left; padding: 14px 6px;
-        border-bottom: 1px solid rgba(247,245,238,0.1); border-radius: 0; font-size: 14px;
-    }
-    .tab-btn:hover { background: transparent; color: var(--dorado-suave); }
-    .tab-btn.active { color: var(--dorado); }
-    .tab-btn.active::after { display: none; }
 }
 
 @media (min-width: 900px) {
@@ -239,8 +218,6 @@ button:disabled { background-color: #EDEAE0; color: #B3AB9B; cursor: not-allowed
 .badge { background-color: var(--verde-fairway); color: var(--dorado-suave); font-size: 10px; font-weight: 700; padding: 4px 10px; border-radius: 20px; letter-spacing: 0.6px; white-space: nowrap; text-transform: uppercase; }
 .badge-closed { background-color: #A39C8C !important; color: var(--blanco) !important; }
 .badge-live { background-color: var(--dorado); color: var(--verde-oscuro) !important; }
-/* Etiqueta discreta "PRÓXIMO" para la tarjeta destacada del calendario -- ya NO es un badge
-   sólido para no competir visualmente con el badge "ABIERTO" del Torneo Activo de arriba. */
 .proximo-label { font-size: 11px; font-weight: 700; letter-spacing: 0.4px; color: var(--dorado); text-transform: uppercase; white-space: nowrap; }
 
 /* -----------------------------------------
@@ -406,8 +383,8 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--dorado); 
     font-size: 9.5px; font-weight: 700; letter-spacing: 0.6px; text-transform: uppercase;
     padding: 4px 9px; border-radius: 20px; color: var(--verde-oscuro);
 }
-.reward-tier-badge.bronce { background: #D7B98E; }
-.reward-tier-badge.plata { background: #D6D8DA; }
+.reward-tier-badge.bronce { background: #C9A46A; }
+.reward-tier-badge.plata { background: #C7CDD1; }
 .reward-tier-badge.oro { background: var(--dorado); color: #3A2E0E; }
 .reward-lock-badge {
     position: absolute; top: 10px; right: 10px; z-index: 2;
