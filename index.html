@@ -5,10 +5,23 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <!-- 🔒 SEGURIDAD: Content-Security-Policy como segunda capa de defensa contra XSS. Bloquea
          cualquier <script> inline o inyectado, y restringe desde dónde se pueden cargar scripts,
-         estilos, imágenes y conexiones de red. IMPORTANTE: pruébala en tu proyecto real de
-         Firebase después de desplegar -- si el navegador bloquea alguna petición legítima (revisa
-         la consola F12), puede que necesites agregar ese dominio a la directiva correspondiente. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://a.espncdn.com; connect-src 'self' https://site.api.espn.com https://sports.core.api.espn.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'self';">
+         estilos, imágenes y conexiones de red.
+         🔧 AJUSTES (30/jul):
+         1) Se quitó 'frame-ancestors' de aquí -- el navegador la IGNORA cuando la CSP se entrega
+            vía <meta> (solo funciona si viene como encabezado HTTP real del servidor). Dejarla no
+            causaba ningún problema funcional, pero SÍ generaba una advertencia constante en la
+            consola ("frame-ancestors is ignored when delivered via a <meta> element"). GitHub
+            Pages no permite configurar encabezados HTTP personalizados, así que esta directiva no
+            se puede aplicar en este hosting -- se documenta aquí por si en el futuro migras a un
+            hosting que sí permita encabezados (Firebase Hosting, Netlify, Vercel, etc.).
+         2) Se agregó 'https://www.gstatic.com' a 'connect-src'. El SDK de Firebase, cuando las
+            herramientas de desarrollador (F12) están abiertas, intenta descargar automáticamente
+            los archivos .map (source maps) de firebase-app.js/auth.js/firestore.js para facilitar
+            la depuración. Sin este dominio en connect-src, el navegador bloqueaba esas peticiones
+            y las mostraba como error en consola -- aunque esto NO rompía el funcionamiento real de
+            la app (los .map solo sirven para depurar, no para ejecutar código), es más limpio
+            permitirlo explícitamente y así el error deja de aparecer. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://a.espncdn.com; connect-src 'self' https://www.gstatic.com https://site.api.espn.com https://sports.core.api.espn.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; base-uri 'self'; form-action 'self'; object-src 'none';">
     <title>Elige tu estrategia. Juega. Diviértete. Gana.</title>
     <link rel="icon" type="image/jpeg" href="logo-golfers.jpg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -17,7 +30,6 @@
     <link rel="stylesheet" href="style.css?v=20260802">
 </head>
 <body>
-
     <!-- MODAL / POPUP -->
     <div id="custom-modal" class="modal-overlay hidden">
         <div class="modal-card">
@@ -30,13 +42,11 @@
             </div>
         </div>
     </div>
-
     <!-- 1. LOGIN / REGISTRO / RECUPERACIÓN -->
     <div id="login-screen" class="card text-center">
         <div class="logo-circle"><img src="logo-golfers.jpg" alt="Golfers"></div>
         <h1 id="auth-title" style="font-size: 24px; line-height: 1.3;">Elige tu estrategia. Juega. Diviértete. Gana.</h1>
         <p id="auth-subtitle" class="subtitle">Torneos de golf entre amigos — acceso exclusivo del grupo.</p>
-
         <div id="register-fields" class="hidden">
             <input type="text" id="reg-nombre" placeholder="Nombre">
             <input type="text" id="reg-apellido" placeholder="Apellidos">
@@ -53,7 +63,6 @@
         <p class="disclaimer">Plataforma privada de torneos de golf segura.</p>
         <div id="message"></div>
     </div>
-
     <!-- 2. PANTALLA PRINCIPAL (LOBBY + TABS) -->
     <div id="lobby-screen" class="card hidden">
         <div class="app-header">
@@ -82,16 +91,13 @@
                 <!-- Botón Admin inyectado dinámicamente si es administrador -->
             </nav>
         </div>
-
         <div id="mobileMenuOverlay" class="mobile-menu-overlay"></div>
-
         <!-- CONTENIDO A: Torneos -->
         <div id="content-torneos" class="tab-content">
             <div class="header-section mt-15">
                 <h2 style="display: flex; align-items: center; gap: 8px;">Torneo Activo <span id="torneo-live-dot" class="pending-dot"></span></h2>
                 <p class="subtitle-small" id="torneo-live-label">Cargando estado...</p>
             </div>
-
             <div class="tournament-box" id="tournament-card-box">
                 <div class="tournament-header">
                     <h3 id="torneo-nombre" class="serif-title">Cargando evento...</h3>
@@ -101,28 +107,24 @@
                 <span id="torneo-inicio" style="display:block; font-size:12px; color:var(--verde-fairway); font-weight:600; margin-top:5px;"></span>
                 <button id="btnIrSeleccion" class="btn-outline mt-15" disabled>Elegir equipo e inscribirme</button>
             </div>
-
             <div class="header-section mt-15 hidden" id="calendario-mes-header">
                 <h2 style="font-size:15px; margin-bottom:2px;">📅 Torneos del mes</h2>
                 <p class="subtitle-small" style="margin-bottom:10px;">Programación oficial del PGA Tour para este mes.</p>
             </div>
             <div id="calendario-torneos-list" style="margin-bottom: 22px;"></div>
         </div>
-
         <!-- CONTENIDO B: Mis Apuestas -->
         <div id="content-apuestas" class="tab-content hidden">
             <h2 class="serif-title mt-15">Mis Apuestas</h2>
             <p class="subtitle-small">Puedes modificar tu equipo hasta 1 hora antes del inicio oficial.</p>
             <div id="mis-apuestas-list" class="tickets-container"></div>
         </div>
-
         <!-- CONTENIDO C: Clasificación -->
         <div id="content-ranking" class="tab-content hidden">
             <h2 class="serif-title mt-15">Leaderboard</h2>
             <p class="subtitle-small">Puntajes oficiales, validados y liquidados por el administrador.</p>
             <div id="ranking-list" class="ranking-container"></div>
         </div>
-
         <!-- CONTENIDO D: Perfil de Usuario -->
         <div id="content-perfil" class="tab-content hidden">
             <h2 class="serif-title mt-15">Mi Perfil</h2>
@@ -137,16 +139,13 @@
                 <button id="btnGuardarPerfil" class="btn-primary mt-15">Guardar Cambios <span>💾</span></button>
             </div>
         </div>
-
         <!-- CONTENIDO E: Reglas del Juego -->
         <div id="content-reglas" class="tab-content hidden">
             <h2 class="serif-title mt-15">Reglas de la Copa</h2>
             <p class="subtitle-small">Léelas antes de tu primera apuesta. Aquí está TODO explicado: cómo apostar, cómo se calculan tus puntos, cómo funciona el pago y cómo reclamar premios.</p>
-
             <div class="pay-instructions" style="margin-bottom:16px;">
                 📌 <strong>Resumen rápido:</strong> eliges cuánto apostar (define tus jugadores y tu multiplicador) → armas tu equipo → pagas manual por Nequi/transferencia → el admin confirma tu pago → tus puntos suben con cada torneo → acumulas y reclamas premios reales.
             </div>
-
             <div class="rules-container">
                 <details class="rule-accordion" open>
                     <summary><span class="rule-icon-mini">💰</span> 1. Cómo apostar: monto, multiplicador y cupos</summary>
@@ -164,7 +163,6 @@
                         <p>Puedes inscribirte varias veces en el mismo torneo si quieres armar equipos distintos con montos distintos — cada inscripción se paga y se cuenta por separado.</p>
                     </div>
                 </details>
-
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">🏌️‍♂️</span> 2. Selección y modificación de tu equipo</summary>
                     <div class="rule-body-content">
@@ -173,7 +171,6 @@
                         <p>Una vez el torneo arranca (o el administrador lo cierra/liquida), tu equipo queda <strong>bloqueado</strong>: no se puede editar ni cancelar la apuesta.</p>
                     </div>
                 </details>
-
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">💬</span> 3. Cómo funciona el pago (100% manual)</summary>
                     <div class="rule-body-content">
@@ -183,7 +180,6 @@
                         <p><strong>Muy importante:</strong> mientras tu apuesta esté "Pendiente", <strong>no suma puntos ni cuenta para nada</strong> — ni para el leaderboard, ni para el acumulado mensual, ni para premios. Solo las apuestas ya confirmadas generan valor.</p>
                     </div>
                 </details>
-
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">📊</span> 4. Cómo se calculan tus puntos</summary>
                     <div class="rule-body-content">
@@ -207,7 +203,6 @@
                         <p>Una vez el torneo queda liquidado, tus puntos de esa apuesta quedan fijos para siempre — no cambian después, aunque el torneo se vuelva a sincronizar por error.</p>
                     </div>
                 </details>
-
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">🏆</span> 5. Clasificación y acumulado de puntos</summary>
                     <div class="rule-body-content">
@@ -215,7 +210,6 @@
                         <p>Tus <strong>Puntos Acumulados</strong> (pestaña Premios) son esos mismos puntos oficiales. Mientras un torneo siga sin liquidarse, esa apuesta aporta <strong>0 puntos acumulados</strong> — así debe ser.</p>
                     </div>
                 </details>
-
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">🎁</span> 6. Catálogo de premios y cómo reclamarlos</summary>
                     <div class="rule-body-content">
@@ -225,7 +219,6 @@
                         <p>Cada premio del catálogo solo se puede reclamar <strong>una vez</strong> por persona.</p>
                     </div>
                 </details>
-
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">🔒</span> 7. Panel de administración y control anti-fraude</summary>
                     <div class="rule-body-content">
@@ -234,7 +227,6 @@
                         <p>El Leaderboard público solo muestra nombre, equipo y puntos de cada jugador — nunca montos apostados ni referencias de pago, que permanecen privados entre cada jugador y el administrador.</p>
                     </div>
                 </details>
-
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">⚖️</span> 8. Juego responsable y condiciones del grupo</summary>
                     <div class="rule-body-content">
@@ -244,7 +236,6 @@
                         <p>Las decisiones del administrador sobre resultados, confirmación de pagos y aprobación de premios son definitivas dentro del grupo.</p>
                     </div>
                 </details>
-
                 <details class="rule-accordion">
                     <summary><span class="rule-icon-mini">❓</span> 9. Preguntas frecuentes</summary>
                     <div class="rule-body-content">
@@ -257,7 +248,6 @@
                 </details>
             </div>
         </div>
-
         <!-- CONTENIDO F: Premios -->
         <div id="content-catalogo" class="tab-content hidden">
             <div class="stats-box mt-15">
@@ -266,20 +256,16 @@
                 <div class="progress-bar"><div class="progress-fill" style="width: 0%;"></div></div>
                 <div style="font-size: 11px; margin-top: 8px; opacity: 0.8;" id="user-points-remaining">Calculando...</div>
             </div>
-
             <h2 class="serif-title mt-15">Premios Disponibles</h2>
             <p class="subtitle-small">Premios seleccionados de alta rotación (sin costos excesivos de peso/envío).</p>
             <div id="catalogo-list" class="catalogo-container"></div>
         </div>
-
         <!-- CONTENIDO G: Panel de Administración -->
         <div id="content-admin" class="tab-content hidden">
             <h2 class="serif-title mt-15">Panel de Administración</h2>
             <p class="subtitle-small">Control financiero, liquidación y sincronización de bases de datos.</p>
-
             <button id="btnSyncDb" class="btn-primary" style="background-color: var(--verde-oscuro); margin-bottom: 10px;">🔄 Actualizar Torneo en Vivo</button>
             <button id="btnSyncCalendario" class="btn-outline" style="margin-bottom: 20px;">📅 Actualizar Calendario del Mes</button>
-
             <div class="admin-stats-grid">
                 <div class="admin-stat-card">
                     <span style="font-size: 11px; color: var(--texto-gris);">Total Recaudado</span>
@@ -294,29 +280,23 @@
                     <strong id="admin-bolsa" style="font-size: 18px; color: var(--dorado);">$0 COP</strong>
                 </div>
             </div>
-
             <div id="admin-bolsa-salud" class="bolsa-salud-box"></div>
-
             <div style="margin-top: 20px;">
                 <h3 style="font-size: 15px; margin-bottom: 10px; font-family:'Playfair Display',serif;">Pagos por Confirmar</h3>
                 <p class="subtitle-small" style="margin-bottom:10px;">Verifica manualmente que recibiste el Nequi/transferencia y confirma aquí.</p>
                 <div id="admin-pagos-pendientes-list" class="tickets-container" style="max-height: 260px;"></div>
             </div>
-
             <div style="margin-top: 20px;">
                 <h3 style="font-size: 15px; margin-bottom: 10px; font-family:'Playfair Display',serif;">Gestión de Torneo y Liquidación</h3>
                 <button id="btnLiquidarTorneo" class="btn-outline btn-small" style="background:var(--dorado-suave); border-color:var(--dorado); color:#5A4718;">🔒 Cerrar y Liquidar Torneo Actual</button>
             </div>
-
             <div style="margin-top: 20px;">
                 <h3 style="font-size: 15px; margin-bottom: 10px; font-family:'Playfair Display',serif;">Premios por Entregar (reclamos aprobados)</h3>
                 <div id="admin-premios-list" class="tickets-container" style="max-height: 220px;"></div>
             </div>
-
             <div style="margin-top: 24px; padding-top: 20px; border-top: 2px solid var(--borde-suave);">
                 <h3 style="font-size: 16px; margin-bottom: 4px; font-family:'Playfair Display',serif;">🎁 Gestión del Catálogo de Premios</h3>
                 <p class="subtitle-small" style="margin-bottom:14px;">Agrega, edita o elimina premios — todo desde aquí, sin tocar la base de datos.</p>
-
                 <div style="background: var(--bg-crema); border: 1px solid var(--borde-suave); border-radius: 10px; padding: 14px; margin-bottom: 18px;">
                     <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:6px;">Tasa de cambio: pesos reales por cada punto</label>
                     <div style="display:flex; gap:8px; align-items:center;">
@@ -325,7 +305,6 @@
                     </div>
                     <p style="font-size: 11px; color: var(--texto-gris); margin: 8px 0 0;">Los puntos requeridos de TODOS los premios se recalculan solos con este número (precio real ÷ esta tasa).</p>
                 </div>
-
                 <div id="premio-form-box" style="background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
                     <h4 id="premio-form-titulo" style="font-family:'Playfair Display',serif; font-size: 14px; margin: 0 0 12px;">Agregar nuevo premio</h4>
                     <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Nombre del premio</label>
@@ -348,19 +327,16 @@
                         <button id="btnCancelarEdicionPremio" class="btn-outline hidden" style="flex:1; margin-bottom:0;">Cancelar</button>
                     </div>
                 </div>
-
                 <h4 style="font-family:'Playfair Display',serif; font-size: 14px; margin: 0 0 10px;">Premios actuales en el catálogo</h4>
                 <div id="admin-premios-crud-list" class="tickets-container" style="max-height: 320px;"></div>
             </div>
         </div>
     </div>
-
     <!-- 3. SELECCIÓN DE MONTO -->
     <div id="seleccion-screen" class="card hidden">
         <button id="btnVolverLobby" class="btn-text btn-back">← Volver a torneos</button>
         <h2 class="serif-title">¿Cuánto quieres jugar?</h2>
         <p class="subtitle-small">Define tu monto para desbloquear cupos de jugadores y multiplicadores.</p>
-
         <div class="slider-container">
             <div class="amount-display" id="amountDisplay">$ 20,000 COP</div>
             <input type="range" id="betSlider" min="4000" max="150000" step="1000" value="20000">
@@ -371,33 +347,27 @@
         </div>
         <button id="btnSiguientePago" class="btn-primary">Continuar a Selección <span>&gt;</span></button>
     </div>
-
     <!-- 4. SELECCIÓN DE JUGADORES -->
     <div id="roster-screen" class="card hidden">
         <button id="btnVolverMonto" class="btn-text btn-back">← Volver</button>
         <h2 class="serif-title" id="roster-title">Arma tu equipo</h2>
         <p class="subtitle-small">Tienes <span id="cupos-restantes" style="font-weight:bold; color:var(--verde-fairway);">0</span> cupos disponibles.</p>
-
         <div id="roster-chips-box" class="roster-chips-box hidden">
             <div class="roster-chips-label">Tu equipo (toca la × para quitar)</div>
             <div id="roster-chips-list" class="roster-chips-list"></div>
         </div>
-
         <div class="player-search-box">
             <span class="player-search-icon">🔍</span>
             <input type="text" id="player-search-input" placeholder="Buscar jugador por nombre...">
         </div>
-
         <div id="player-list" class="player-list"></div>
         <button id="btnIrCheckout" class="btn-primary" disabled>Revisar mi apuesta <span>&gt;</span></button>
     </div>
-
     <!-- 5. CHECKOUT -->
     <div id="checkout-screen" class="card hidden">
         <button id="btnVolverRoster" class="btn-text btn-back">← Modificar equipo</button>
         <h2 class="serif-title" id="checkout-title">Resumen de Apuesta</h2>
         <p class="subtitle-small">Revisa tu selección y confirma tu inscripción.</p>
-
         <div class="checkout-ticket">
             <div class="ticket-row"><span style="color:var(--texto-gris)">Torneo</span> <strong id="chk-torneo">Cargando...</strong></div>
             <div class="ticket-row"><span style="color:var(--texto-gris)">Inversión</span> <strong id="chk-monto">$0 COP</strong></div>
@@ -406,17 +376,13 @@
             <div style="font-size:13px; color:var(--texto-gris); margin-bottom:10px;">Tu Equipo:</div>
             <ul id="chk-equipo" class="equipo-list"></ul>
         </div>
-
         <div class="pay-instructions mt-15">
             💬 Pago manual: envía tu inversión por Nequi o transferencia al administrador del grupo. Tu inscripción quedará como <strong>Pendiente</strong> hasta que el administrador confirme que recibió el pago.
         </div>
-
         <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:6px;">Número de referencia / comprobante (opcional, pero ayuda a confirmar más rápido)</label>
         <input type="text" id="chk-referencia" placeholder="Ej: Nequi #123456789">
-
         <button id="btnPagarBold" class="btn-primary" style="background-color: var(--verde-oscuro);">Confirmar inscripción <span>✔️</span></button>
     </div>
-
     <!-- 6. ÉXITO -->
     <div id="success-screen" class="card text-center hidden">
         <div class="logo-circle" style="background-color: var(--dorado); margin-bottom: 20px;">⏳</div>
@@ -428,7 +394,6 @@
         </div>
         <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
     </div>
-
     <script type="module" src="app.js?v=20260802"></script>
 </body>
 </html>
