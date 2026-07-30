@@ -6,22 +6,20 @@
     <!-- 🔒 SEGURIDAD: Content-Security-Policy como segunda capa de defensa contra XSS. Bloquea
          cualquier <script> inline o inyectado, y restringe desde dónde se pueden cargar scripts,
          estilos, imágenes y conexiones de red.
-         🔧 AJUSTES (30/jul):
-         1) Se quitó 'frame-ancestors' de aquí -- el navegador la IGNORA cuando la CSP se entrega
-            vía <meta> (solo funciona si viene como encabezado HTTP real del servidor). Dejarla no
-            causaba ningún problema funcional, pero SÍ generaba una advertencia constante en la
-            consola ("frame-ancestors is ignored when delivered via a <meta> element"). GitHub
+         🔧 AJUSTES ACUMULADOS:
+         1) Se quitó 'frame-ancestors' de la meta tag -- el navegador la IGNORA cuando la CSP se
+            entrega vía <meta> (solo funciona como encabezado HTTP real del servidor). GitHub
             Pages no permite configurar encabezados HTTP personalizados, así que esta directiva no
-            se puede aplicar en este hosting -- se documenta aquí por si en el futuro migras a un
-            hosting que sí permita encabezados (Firebase Hosting, Netlify, Vercel, etc.).
-         2) Se agregó 'https://www.gstatic.com' a 'connect-src'. El SDK de Firebase, cuando las
-            herramientas de desarrollador (F12) están abiertas, intenta descargar automáticamente
-            los archivos .map (source maps) de firebase-app.js/auth.js/firestore.js para facilitar
-            la depuración. Sin este dominio en connect-src, el navegador bloqueaba esas peticiones
-            y las mostraba como error en consola -- aunque esto NO rompía el funcionamiento real de
-            la app (los .map solo sirven para depurar, no para ejecutar código), es más limpio
-            permitirlo explícitamente y así el error deja de aparecer. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://a.espncdn.com; connect-src 'self' https://www.gstatic.com https://site.api.espn.com https://sports.core.api.espn.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; base-uri 'self'; form-action 'self'; object-src 'none';">
+            aplica en este hosting.
+         2) 'https://www.gstatic.com' en connect-src: el SDK de Firebase, con F12 abierto, intenta
+            descargar los source maps (.map) de firebase-app/auth/firestore.js para depuración.
+         3) 'https://apis.google.com' en script-src y en connect-src, más una nueva directiva
+            frame-src con 'https://apis.google.com': Firebase Authentication (getAuth) usa
+            internamente la librería gapi.iframes de Google para gestionar el flujo de login por
+            popup/redirect (crea un iframe oculto que carga apis.google.com/js/api.js). Sin estos
+            permisos, la CSP bloqueaba ese script y el iframe asociado -- esto podía impedir que el
+            login/registro funcionara correctamente en algunos navegadores. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://a.espncdn.com; connect-src 'self' https://www.gstatic.com https://apis.google.com https://site.api.espn.com https://sports.core.api.espn.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; frame-src 'self' https://apis.google.com; base-uri 'self'; form-action 'self'; object-src 'none';">
     <title>Elige tu estrategia. Juega. Diviértete. Gana.</title>
     <link rel="icon" type="image/jpeg" href="logo-golfers.jpg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
