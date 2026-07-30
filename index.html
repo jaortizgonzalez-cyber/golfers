@@ -13,19 +13,17 @@
             aplica en este hosting.
          2) 'https://www.gstatic.com' en connect-src: el SDK de Firebase, con F12 abierto, intenta
             descargar los source maps (.map) de firebase-app/auth/firestore.js para depuración.
-         3) 'https://apis.google.com' en script-src y en connect-src, más una nueva directiva
-            frame-src con 'https://apis.google.com': Firebase Authentication (getAuth) usa
-            internamente la librería gapi.iframes de Google para gestionar el flujo de login por
-            popup/redirect (crea un iframe oculto que carga apis.google.com/js/api.js). Sin estos
-            permisos, la CSP bloqueaba ese script y el iframe asociado -- esto podía impedir que el
-            login/registro funcionara correctamente en algunos navegadores. -->
+         3) 'https://apis.google.com' en script-src y en connect-src, más frame-src con
+            'https://apis.google.com' y 'https://golfers-bf5ec.firebaseapp.com': Firebase
+            Authentication usa internamente gapi.iframes y un iframe apuntando al authDomain del
+            proyecto para gestionar la sesión de login. -->
     <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://a.espncdn.com; connect-src 'self' https://www.gstatic.com https://apis.google.com https://site.api.espn.com https://sports.core.api.espn.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; frame-src 'self' https://apis.google.com https://golfers-bf5ec.firebaseapp.com; base-uri 'self'; form-action 'self'; object-src 'none';">
     <title>Elige tu estrategia. Juega. Diviértete. Gana.</title>
     <link rel="icon" type="image/jpeg" href="logo-golfers.jpg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260802">
+    <link rel="stylesheet" href="style.css?v=20260803">
 </head>
 <body>
     <!-- MODAL / POPUP -->
@@ -69,11 +67,27 @@
                     <img src="logo-golfers.jpg" alt="Golfers" class="brand-mark">
                 </div>
                 <div class="user-box">
-                    <div class="user-greeting-box">
-                        <span class="welcome-text">Bienvenido,</span>
-                        <span id="user-name-display" class="user-name-text">Jugador</span>
+                    <!-- 👤 AVATAR DE USUARIO: círculo con las iniciales del usuario autenticado.
+                         Al hacer clic se despliega un menú con el saludo y la opción de cerrar
+                         sesión -- reemplaza el texto "Bienvenido, Nombre" + enlace "Cerrar sesión"
+                         que antes iban sueltos en el encabezado y lo hacían ver desordenado.
+                         IMPORTANTE: se conservan los IDs originales 'user-name-display' y
+                         'btnLogout' (ahora dentro del menú desplegable) para que el código
+                         existente de app.js siga funcionando sin modificaciones. -->
+                    <div class="user-menu-wrap">
+                        <button id="btnUserAvatar" class="user-avatar" aria-label="Menú de usuario" aria-expanded="false">
+                            <span id="user-initials">·</span>
+                        </button>
+                        <div id="user-dropdown" class="user-dropdown hidden">
+                            <div class="user-dropdown-header">
+                                <span class="welcome-text">Bienvenido,</span>
+                                <span id="user-name-display" class="user-name-text">Jugador</span>
+                            </div>
+                            <button id="btnLogout" class="user-dropdown-item">
+                                <span aria-hidden="true">↪</span> Cerrar sesión
+                            </button>
+                        </div>
                     </div>
-                    <button id="btnLogout" class="btn-logout-link">Cerrar sesión</button>
                     <button id="btnHamburger" class="hamburger-btn" aria-label="Abrir menú">
                         <span></span><span></span><span></span>
                     </button>
@@ -392,6 +406,6 @@
         </div>
         <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
     </div>
-    <script type="module" src="app.js?v=20260802"></script>
+    <script type="module" src="app.js?v=20260803"></script>
 </body>
 </html>
