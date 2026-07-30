@@ -70,7 +70,7 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
 /* -----------------------------------------
    ENCABEZADO / NAVEGACIÓN
    Desktop: barra horizontal normal.
-   Móvil: hamburguesa + panel deslizable (drawer) desde la derecha.
+   Móvil: hamburguesa + panel deslizable (drawer) verde desde la derecha.
    ----------------------------------------- */
 .app-header {
     display: flex;
@@ -87,10 +87,8 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
     align-items: center;
     justify-content: space-between;
     gap: 16px;
-    /* 🔧 FIX MENÚ MÓVIL: z-index propio para que el logo, el saludo y el botón de hamburguesa
-       queden SIEMPRE por encima del overlay oscuro (z-index:998) y del panel del menú
-       (z-index:999). Antes no tenía z-index, así que quedaba en la capa "normal" del documento
-       y el overlay podía taparlo visualmente. */
+    /* z-index propio para que el logo, el avatar y el botón de hamburguesa queden SIEMPRE por
+       encima del overlay oscuro (z-index:998) y del panel del menú móvil (z-index:999). */
     position: relative;
     z-index: 1000;
 }
@@ -140,12 +138,91 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
     height: 2px; background: var(--dorado); border-radius: 2px;
 }
 
-.user-box { display: flex; align-items: center; gap: 14px; flex-shrink: 0; }
-.user-greeting-box { display: flex; flex-direction: column; overflow: hidden; align-items: flex-end; }
-.welcome-text { font-size: 10px; color: var(--texto-gris); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 2px; }
-.user-name-text { font-size: 15px; font-weight: 700; color: var(--verde-fairway); font-family: 'Playfair Display', serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 220px; }
-.btn-logout-link { background: transparent; border: none; color: #9A9385; font-size: 11px; text-decoration: underline; padding: 0; cursor: pointer; white-space: nowrap; width: auto; margin-bottom: 0; transition: color 0.2s; }
-.btn-logout-link:hover { color: var(--texto-oscuro); }
+/* -----------------------------------------
+   👤 AVATAR DE USUARIO + MENÚ DESPLEGABLE
+   Reemplaza el antiguo bloque "Bienvenido, Nombre" + enlace "Cerrar sesión" que iba suelto
+   en el encabezado (se veía desordenado y competía visualmente con el logo y la hamburguesa).
+   Ahora: un círculo compacto con las iniciales; al tocarlo se abre un menú con el saludo
+   completo y el botón de cerrar sesión.
+   ----------------------------------------- */
+.user-box { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+
+/* Contenedor relativo: es el ancla de posicionamiento del menú desplegable. */
+.user-menu-wrap { position: relative; flex-shrink: 0; }
+
+.user-avatar {
+    /* width fijo + margin-bottom:0 anulan la regla global de <button> (width:100%, margin-bottom:12px) */
+    width: 38px; height: 38px;
+    border-radius: 50%;
+    background: var(--verde-fairway);
+    color: var(--dorado-suave);
+    border: 1.5px solid var(--dorado);
+    margin-bottom: 0;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'Playfair Display', serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: transform 0.18s ease, box-shadow 0.18s ease;
+}
+.user-avatar:hover { transform: scale(1.06); box-shadow: 0 4px 12px rgba(18,59,44,0.22); }
+.user-avatar:focus-visible { outline: 2px solid var(--dorado); outline-offset: 2px; }
+
+.user-dropdown {
+    position: absolute;
+    top: calc(100% + 10px);
+    right: 0;
+    min-width: 210px;
+    background: var(--blanco);
+    border: 1px solid var(--borde-suave);
+    border-top: 3px solid var(--dorado);
+    border-radius: 12px;
+    box-shadow: 0 14px 34px rgba(18,59,44,0.18);
+    padding: 6px;
+    z-index: 1002;
+    animation: dropdownIn 0.18s ease-out;
+}
+@keyframes dropdownIn {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.user-dropdown-header {
+    display: flex;
+    flex-direction: column;
+    padding: 12px 12px 12px;
+    border-bottom: 1px solid var(--borde-suave);
+    margin-bottom: 4px;
+}
+.welcome-text { font-size: 10px; color: var(--texto-gris); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 3px; }
+.user-name-text {
+    font-size: 15px; font-weight: 700; color: var(--verde-fairway);
+    font-family: 'Playfair Display', serif;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px;
+}
+
+.user-dropdown-item {
+    width: 100%;
+    background: transparent;
+    border: none;
+    color: var(--texto-oscuro);
+    font-size: 13.5px;
+    font-weight: 600;
+    text-align: left;
+    justify-content: flex-start;
+    padding: 11px 12px;
+    border-radius: 8px;
+    margin-bottom: 0;
+    cursor: pointer;
+    gap: 9px;
+    transition: background 0.18s ease, color 0.18s ease;
+}
+.user-dropdown-item:hover { background: rgba(166,64,47,0.07); color: var(--rojo-alerta); }
 
 /* Hamburger button — hidden on desktop */
 .hamburger-btn {
@@ -154,10 +231,10 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
     justify-content: center;
     align-items: center;
     gap: 4px;
-    width: 34px; height: 34px;
+    width: 38px; height: 38px;
     background: var(--blanco);
     border: 1px solid var(--borde-suave);
-    border-radius: 8px;
+    border-radius: 9px;
     cursor: pointer;
     padding: 0;
     margin-bottom: 0;
@@ -178,21 +255,13 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
 @media (max-width: 860px) {
     .hamburger-btn { display: flex; }
     .mobile-menu-overlay { display: block; }
-    .user-greeting-box { display: none; }
 
-    /* 🔧 FIX PRINCIPAL DEL MENÚ MÓVIL: antes esta regla no existía, por eso el menú (.nav-tabs)
-       se quedaba SIEMPRE visible como una fila normal dentro del encabezado -- al haber ya 7
-       pestañas (Torneos, Mis apuestas, Leaderboard, Perfil, Reglas, Premios, Admin) esa fila
-       hacía "flex-wrap" y se desbordaba visualmente fuera de la tarjeta ("se ven las opciones
-       por fuera"). Y aunque el botón de hamburguesa sí oscurecía el fondo (overlay) y animaba el
-       ícono a "X", nunca existía ningún panel que se "abriera" de verdad -- por eso "ya no sale
-       el menú como antes".
-       Ahora .nav-tabs se convierte en un panel FIJO (drawer) que vive fuera de la pantalla
-       (a la derecha, transform: translateX(100%)) y solo se desliza a la vista cuando tiene la
-       clase .open (que el JS ya agregaba correctamente en openMobileMenu(), pero antes no hacía
-       nada visualmente porque faltaba este estilo). */
-    /* 🎨 Fondo VERDE (color de marca de la app, var(--verde-fairway)) -- así se veía el panel
-       móvil originalmente, antes de que faltara este bloque de CSS por completo. */
+    /* En móvil el avatar y la hamburguesa conviven lado a lado, ambos compactos y del mismo
+       tamaño (38px) para que se vean alineados y ordenados. El menú del avatar se abre por
+       debajo, anclado a la derecha, sin interferir con el drawer de navegación. */
+    .user-box { gap: 8px; }
+
+    /* Panel deslizable (drawer) del menú principal, con el verde de marca de la app. */
     .nav-tabs {
         position: fixed;
         top: 0;
@@ -212,12 +281,10 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
         z-index: 999;
         overflow-y: auto;
     }
-    .nav-tabs.open {
-        transform: translateX(0);
-    }
+    .nav-tabs.open { transform: translateX(0); }
+
     /* Dentro del panel móvil, cada pestaña ocupa el ancho completo, alineada a la izquierda,
-       como una lista vertical típica de menú -- no como los "chips" en fila del desktop.
-       Texto en dorado-suave (crema) para buen contraste sobre el fondo verde oscuro. */
+       en dorado-suave para buen contraste sobre el fondo verde oscuro. */
     .nav-tabs .tab-btn {
         width: 100%;
         justify-content: flex-start;
@@ -227,8 +294,6 @@ h2 { font-size: 22px; margin-top: 0; margin-bottom: 15px; }
         color: var(--dorado-suave);
     }
     .nav-tabs .tab-btn:hover { color: var(--blanco); background: rgba(255,255,255,0.08); }
-    /* El indicador dorado de pestaña activa se reubica como una barra vertical a la izquierda,
-       en vez de una línea horizontal abajo (que no tiene sentido en un menú vertical). */
     .nav-tabs .tab-btn.active { color: var(--blanco); background: rgba(255,255,255,0.12); }
     .nav-tabs .tab-btn.active::after {
         left: 0; right: auto; bottom: 6px; top: 6px;
