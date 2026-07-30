@@ -1844,3 +1844,79 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
         btn.disabled = false; 
     }
 });
+
+
+// =====================================================================
+// --- 👤 AVATAR DE USUARIO CON MENÚ DESPLEGABLE ---
+// Reemplaza el antiguo "Bienvenido, Nombre" + enlace "Cerrar sesión" sueltos en el encabezado.
+// Ahora se muestra un círculo compacto con las iniciales del usuario; al hacer clic se abre un
+// menú con el saludo completo y el botón de cerrar sesión.
+//
+// ✅ Este bloque es COMPLETAMENTE AUTOCONTENIDO: no hay que modificar ninguna función existente.
+//    Usa un MutationObserver que vigila el elemento #user-name-display, así que cada vez que
+//    cargarDatosPerfil() o btnGuardarPerfil actualizan ese nombre (como ya lo hacían antes),
+//    las iniciales del avatar se recalculan solas. El listener original de #btnLogout tampoco
+//    se toca -- ese botón simplemente ahora vive dentro del menú desplegable.
+// =====================================================================
+(function initUserAvatarMenu() {
+    const nameEl = document.getElementById('user-name-display');
+    const initialsEl = document.getElementById('user-initials');
+    const btnAvatar = document.getElementById('btnUserAvatar');
+    const dropdown = document.getElementById('user-dropdown');
+
+    // Si el HTML no tiene estos elementos, salimos sin romper nada.
+    if (!nameEl || !initialsEl || !btnAvatar || !dropdown) return;
+
+    // Calcula las iniciales: primera letra del nombre + primera letra del último apellido.
+    // Ej: "Jose Andres Ortiz" -> "JO" | "Juan Perez" -> "JP" | "Fernando" -> "FE"
+    function calcularIniciales(nombreCompleto) {
+        const partes = String(nombreCompleto || '').trim().split(/\s+/).filter(Boolean);
+        if (partes.length === 0) return '·';
+        if (partes.length === 1) return partes[0].substring(0, 2).toUpperCase();
+        return (partes[0][0] + partes[partes.length - 1][0]).toUpperCase();
+    }
+
+    function sincronizarIniciales() {
+        initialsEl.textContent = calcularIniciales(nameEl.textContent);
+    }
+
+    // Vigila cambios en el nombre mostrado y actualiza las iniciales automáticamente.
+    new MutationObserver(sincronizarIniciales).observe(nameEl, {
+        childList: true,
+        characterData: true,
+        subtree: true
+    });
+    sincronizarIniciales();
+
+    function abrirMenuUsuario() {
+        dropdown.classList.remove('hidden');
+        btnAvatar.setAttribute('aria-expanded', 'true');
+    }
+    function cerrarMenuUsuario() {
+        dropdown.classList.add('hidden');
+        btnAvatar.setAttribute('aria-expanded', 'false');
+    }
+
+    btnAvatar.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (dropdown.classList.contains('hidden')) abrirMenuUsuario();
+        else cerrarMenuUsuario();
+    });
+
+    // Cerrar al hacer clic fuera del menú.
+    document.addEventListener('click', (e) => {
+        if (!dropdown.contains(e.target) && !btnAvatar.contains(e.target)) {
+            cerrarMenuUsuario();
+        }
+    });
+
+    // Cerrar con la tecla Escape (accesibilidad).
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') cerrarMenuUsuario();
+    });
+
+    // En móvil: si se abre el menú hamburguesa, cerramos el del avatar para que no se
+    // superpongan visualmente (y viceversa lo maneja el overlay).
+    document.getElementById('btnHamburger')?.addEventListener('click', cerrarMenuUsuario);
+})();
+
