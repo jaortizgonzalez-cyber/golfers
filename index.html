@@ -16,14 +16,18 @@
          3) 'https://apis.google.com' en script-src y en connect-src, más frame-src con
             'https://apis.google.com' y 'https://golfers-bf5ec.firebaseapp.com': Firebase
             Authentication usa internamente gapi.iframes y un iframe apuntando al authDomain del
-            proyecto para gestionar la sesión de login. -->
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://a.espncdn.com; connect-src 'self' https://www.gstatic.com https://apis.google.com https://site.api.espn.com https://sports.core.api.espn.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; frame-src 'self' https://apis.google.com https://golfers-bf5ec.firebaseapp.com; base-uri 'self'; form-action 'self'; object-src 'none';">
+            proyecto para gestionar la sesión de login.
+         4) 🎓 MÓDULO ACADEMIA: 'https://www.youtube-nocookie.com' en frame-src (para los iframes
+            de video) y 'https://i.ytimg.com' en img-src (para las miniaturas que el reproductor
+            carga antes del play). Se usa el dominio -nocookie (modo privacidad mejorada de
+            YouTube): no instala cookies de rastreo hasta que el usuario le da play al video. -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' https://www.gstatic.com https://apis.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' data: https://a.espncdn.com https://i.ytimg.com; connect-src 'self' https://www.gstatic.com https://apis.google.com https://site.api.espn.com https://sports.core.api.espn.com https://firestore.googleapis.com https://firebaseinstallations.googleapis.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://www.googleapis.com; frame-src 'self' https://apis.google.com https://golfers-bf5ec.firebaseapp.com https://www.youtube-nocookie.com; base-uri 'self'; form-action 'self'; object-src 'none';">
     <title>Elige tu estrategia. Juega. Diviértete. Gana.</title>
     <link rel="icon" type="image/jpeg" href="logo-golfers.jpg">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260803">
+    <link rel="stylesheet" href="style.css?v=20260804">
 </head>
 <body>
     <!-- MODAL / POPUP -->
@@ -69,9 +73,7 @@
                 <div class="user-box">
                     <!-- 👤 AVATAR DE USUARIO: círculo con las iniciales del usuario autenticado.
                          Al hacer clic se despliega un menú con el saludo y la opción de cerrar
-                         sesión -- reemplaza el texto "Bienvenido, Nombre" + enlace "Cerrar sesión"
-                         que antes iban sueltos en el encabezado y lo hacían ver desordenado.
-                         IMPORTANTE: se conservan los IDs originales 'user-name-display' y
+                         sesión. IMPORTANTE: se conservan los IDs originales 'user-name-display' y
                          'btnLogout' (ahora dentro del menú desplegable) para que el código
                          existente de app.js siga funcionando sin modificaciones. -->
                     <div class="user-menu-wrap">
@@ -97,6 +99,8 @@
                 <button class="tab-btn active" id="tab-torneos">Torneos</button>
                 <button class="tab-btn" id="tab-apuestas">Mis apuestas</button>
                 <button class="tab-btn" id="tab-ranking">Leaderboard</button>
+                <!-- 🎓 NUEVA PESTAÑA: módulo de aprendizaje con videos curados de golf -->
+                <button class="tab-btn" id="tab-academia">Academia</button>
                 <button class="tab-btn" id="tab-perfil">Perfil</button>
                 <button class="tab-btn" id="tab-reglas">Reglas</button>
                 <button class="tab-btn" id="tab-catalogo">Premios</button>
@@ -136,6 +140,13 @@
             <h2 class="serif-title mt-15">Leaderboard</h2>
             <p class="subtitle-small">Puntajes oficiales, validados y liquidados por el administrador.</p>
             <div id="ranking-list" class="ranking-container"></div>
+        </div>
+        <!-- 🎓 CONTENIDO NUEVO: Academia (videos de aprendizaje) -->
+        <div id="content-academia" class="tab-content hidden">
+            <h2 class="serif-title mt-15">🎓 Academia</h2>
+            <p class="subtitle-small">Videos seleccionados para mejorar tu juego. Filtra por el tema que quieras practicar.</p>
+            <div id="academia-categorias" class="academia-chips"></div>
+            <div id="academia-list" class="academia-container"></div>
         </div>
         <!-- CONTENIDO D: Perfil de Usuario -->
         <div id="content-perfil" class="tab-content hidden">
@@ -232,15 +243,23 @@
                     </div>
                 </details>
                 <details class="rule-accordion">
-                    <summary><span class="rule-icon-mini">🔒</span> 7. Panel de administración y control anti-fraude</summary>
+                    <summary><span class="rule-icon-mini">🎓</span> 7. Academia: videos de aprendizaje</summary>
                     <div class="rule-body-content">
-                        <p>Un único correo tiene acceso al panel de Admin. Desde ahí se confirman pagos, se sincronizan resultados oficiales, se liquidan/cierran torneos y se aprueban o rechazan premios.</p>
+                        <p>La pestaña <strong>Academia</strong> reúne videos seleccionados a mano por el administrador para ayudarte a mejorar tu juego, organizados por tema: putt, drive, approach, chip, bunker, reglas y juego mental.</p>
+                        <p>Son videos <strong>curados</strong>, no resultados automáticos de búsqueda — cada uno fue revisado antes de publicarse, así que no encontrarás relleno ni clickbait.</p>
+                        <p>Ver videos <strong>no otorga puntos</strong>: la Academia es puramente formativa y no afecta el Leaderboard ni tu acumulado para premios.</p>
+                    </div>
+                </details>
+                <details class="rule-accordion">
+                    <summary><span class="rule-icon-mini">🔒</span> 8. Panel de administración y control anti-fraude</summary>
+                    <div class="rule-body-content">
+                        <p>Un único correo tiene acceso al panel de Admin. Desde ahí se confirman pagos, se sincronizan resultados oficiales, se liquidan/cierran torneos, se aprueban o rechazan premios y se gestiona el catálogo de la Academia.</p>
                         <p>Ningún jugador puede aprobar su propio pago, inflar sus propios puntos, ni cambiar el monto de su apuesta después de crearla — esas acciones están bloqueadas a nivel de base de datos (no solo escondidas en la pantalla), así que no hay forma de hacer trampa desde el navegador.</p>
                         <p>El Leaderboard público solo muestra nombre, equipo y puntos de cada jugador — nunca montos apostados ni referencias de pago, que permanecen privados entre cada jugador y el administrador.</p>
                     </div>
                 </details>
                 <details class="rule-accordion">
-                    <summary><span class="rule-icon-mini">⚖️</span> 8. Juego responsable y condiciones del grupo</summary>
+                    <summary><span class="rule-icon-mini">⚖️</span> 9. Juego responsable y condiciones del grupo</summary>
                     <div class="rule-body-content">
                         <p>Este es un juego <strong>privado entre un grupo cerrado de conocidos</strong>, no una casa de apuestas pública ni un producto comercial abierto al público. Por eso el registro requiere un código de invitación del administrador.</p>
                         <p>Apuesta únicamente dinero que estés dispuesto a perder. Esto es para divertirse entre amigos, no es una inversión ni una fuente de ingresos garantizada.</p>
@@ -249,7 +268,7 @@
                     </div>
                 </details>
                 <details class="rule-accordion">
-                    <summary><span class="rule-icon-mini">❓</span> 9. Preguntas frecuentes</summary>
+                    <summary><span class="rule-icon-mini">❓</span> 10. Preguntas frecuentes</summary>
                     <div class="rule-body-content">
                         <p><strong>¿Puedo inscribirme varias veces en el mismo torneo?</strong><br>Sí. Puedes crear varias apuestas independientes en el mismo torneo, cada una con su propio monto y equipo.</p>
                         <p><strong>¿Qué pasa si nunca pago después de inscribirme?</strong><br>Tu apuesta se queda en "Pendiente" indefinidamente: no suma puntos, no cuenta para nada, y el administrador puede eliminarla.</p>
@@ -342,6 +361,36 @@
                 <h4 style="font-family:'Playfair Display',serif; font-size: 14px; margin: 0 0 10px;">Premios actuales en el catálogo</h4>
                 <div id="admin-premios-crud-list" class="tickets-container" style="max-height: 320px;"></div>
             </div>
+            <!-- 🎓 NUEVA SECCIÓN ADMIN: gestión del catálogo de la Academia -->
+            <div style="margin-top: 24px; padding-top: 20px; border-top: 2px solid var(--borde-suave);">
+                <h3 style="font-size: 16px; margin-bottom: 4px; font-family:'Playfair Display',serif;">🎓 Gestión de la Academia</h3>
+                <p class="subtitle-small" style="margin-bottom:14px;">Pega el enlace de YouTube, elige la categoría y listo. El video aparece de inmediato para todo el grupo.</p>
+                <div id="leccion-form-box" style="background: var(--blanco); border: 1px solid var(--borde-suave); border-radius: 10px; padding: 16px; margin-bottom: 18px;">
+                    <h4 id="leccion-form-titulo" style="font-family:'Playfair Display',serif; font-size: 14px; margin: 0 0 12px;">Agregar nueva lección</h4>
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Título de la lección</label>
+                    <input type="text" id="leccion-titulo" placeholder="Ej: Cómo leer el green antes de un putt">
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Enlace de YouTube</label>
+                    <input type="text" id="leccion-url" placeholder="Ej: https://www.youtube.com/watch?v=..." style="margin-bottom: 6px;">
+                    <p id="leccion-url-status" style="font-size: 11px; margin: 0 0 10px; min-height: 15px;"></p>
+                    <div id="leccion-preview" class="leccion-preview hidden"></div>
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Categoría</label>
+                    <select id="leccion-categoria" style="width:100%; padding:13px 14px; margin-bottom:14px; border:1px solid var(--borde-suave); border-radius:8px; font-size:14.5px; font-family:'Inter',sans-serif; background:var(--blanco); color:var(--texto-oscuro);"></select>
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Nivel</label>
+                    <select id="leccion-nivel" style="width:100%; padding:13px 14px; margin-bottom:14px; border:1px solid var(--borde-suave); border-radius:8px; font-size:14.5px; font-family:'Inter',sans-serif; background:var(--blanco); color:var(--texto-oscuro);">
+                        <option value="principiante">Principiante</option>
+                        <option value="intermedio">Intermedio</option>
+                        <option value="avanzado">Avanzado</option>
+                    </select>
+                    <label style="font-size: 12px; font-weight: 600; color: var(--texto-gris); display:block; margin-bottom:4px;">Descripción corta (opcional)</label>
+                    <input type="text" id="leccion-descripcion" placeholder="Ej: Técnica para leer pendientes y velocidad del green">
+                    <div style="display:flex; gap:8px;">
+                        <button id="btnGuardarLeccion" class="btn-primary" style="flex:1; margin-bottom:0;">💾 Guardar Lección</button>
+                        <button id="btnCancelarEdicionLeccion" class="btn-outline hidden" style="flex:1; margin-bottom:0;">Cancelar</button>
+                    </div>
+                </div>
+                <h4 style="font-family:'Playfair Display',serif; font-size: 14px; margin: 0 0 10px;">Lecciones publicadas</h4>
+                <div id="admin-lecciones-list" class="tickets-container" style="max-height: 320px;"></div>
+            </div>
         </div>
     </div>
     <!-- 3. SELECCIÓN DE MONTO -->
@@ -406,6 +455,6 @@
         </div>
         <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
     </div>
-    <script type="module" src="app.js?v=20260803"></script>
+    <script type="module" src="app.js?v=20260804"></script>
 </body>
 </html>
