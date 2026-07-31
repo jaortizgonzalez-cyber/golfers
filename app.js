@@ -1920,3 +1920,363 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
     document.getElementById('btnHamburger')?.addEventListener('click', cerrarMenuUsuario);
 })();
 
+
+// =====================================================================
+// --- 🎓 MÓDULO ACADEMIA: videos de aprendizaje de golf ---
+//
+// Catálogo CURADO (no búsqueda dinámica en YouTube). Razón técnica: la YouTube Data API v3
+// limita search.list a solo 100 llamadas por día para TODO el proyecto, sin opción de comprar
+// más cuota. Con un grupo de amigos usando la app, esa cuota se agota rápido y la sección
+// quedaría rota con error 403. Además, una búsqueda abierta puede devolver contenido irrelevante
+// o de baja calidad. Con el catálogo curado: sin límites, sin API key extra, y el admin controla
+// exactamente qué videos ve el grupo.
+//
+// ✅ BLOQUE AUTOCONTENIDO: se pega al final de app.js sin modificar ninguna función existente.
+//    Reutiliza los helpers globales ya definidos arriba (db, auth, mostrarModal,
+//    mostrarConfirmacion, escapeHtml, ADMIN_EMAIL) y las funciones de Firestore ya importadas.
+// =====================================================================
+
+// Categorías fijas del módulo. El 'id' se guarda en Firestore; el 'label' es lo que ve el usuario.
+const CATEGORIAS_ACADEMIA = [
+    { id: 'todos',    label: 'Todos',     icono: '🎬' },
+    { id: 'putt',     label: 'Putt',      icono: '⛳' },
+    { id: 'drive',    label: 'Drive',     icono: '🏌️' },
+    { id: 'approach', label: 'Approach',  icono: '🎯' },
+    { id: 'chip',     label: 'Chip',      icono: '🪁' },
+    { id: 'bunker',   label: 'Bunker',    icono: '🏖️' },
+    { id: 'reglas',   label: 'Reglas',    icono: '📖' },
+    { id: 'mental',   label: 'Mental',    icono: '🧠' }
+];
+
+let categoriaAcademiaActiva = 'todos';
+let leccionesCache = [];
+
+// Extrae el ID de video de cualquier formato de URL de YouTube que el admin pegue:
+//   https://www.youtube.com/watch?v=ABC123      -> ABC123
+//   https://youtu.be/ABC123                     -> ABC123
+//   https://www.youtube.com/embed/ABC123        -> ABC123
+//   https://www.youtube.com/shorts/ABC123       -> ABC123
+//   ABC123 (el ID pelado)                       -> ABC123
+// Devuelve null si no reconoce nada válido (los IDs de YouTube son 11 caracteres).
+function extraerYoutubeId(entrada) {
+    const texto = String(entrada || '').trim();
+    if (!texto) return null;
+
+    // Si ya es un ID limpio de 11 caracteres válidos, lo aceptamos directo.
+    if (/^[a-zA-Z0-9_-]{11}$/.test(texto)) return texto;
+
+    const patrones = [
+        /(?:youtube\.com\/watch\?(?:.*&)?v=)([a-zA-Z0-9_-]{11})/,
+        /(?:youtu\.be\/)([a-zA-Z0-9_-]{11})/,
+        /(?:youtube\.com\/embed\/)([a-zA-Z0-9_-]{11})/,
+        /(?:youtube\.com\/shorts\/)([a-zA-Z0-9_-]{11})/,
+        /(?:youtube\.com\/live\/)([a-zA-Z0-9_-]{11})/
+    ];
+    for (const p of patrones) {
+        const m = texto.match(p);
+        if (m && m[1]) return m[1];
+    }
+    return null;
+}
+
+async function obtenerLecciones() {
+    const snap = await getDocs(collection(db, "lecciones"));
+    const items = [];
+    snap.forEach(d => items.push({ id: d.id, ...d.data() }));
+    // Orden alfabético por título para que el catálogo se vea consistente.
+    items.sort((a, b) => String(a.titulo || '').localeCompare(String(b.titulo || ''), 'es', { sensitivity: 'base' }));
+    return items;
+}
+
+// --- Vista del jugador: pestaña "Academia" ---
+async function cargarAcademia() {
+    const chipsBox = document.getElementById('academia-categorias');
+    const container = document.getElementById('academia-list');
+    if (!container) return;
+
+    container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
+
+    try {
+        leccionesCache = await obtenerLecciones();
+
+        // Píldoras de categoría (solo se muestran las que tienen al menos un video, más "Todos").
+        if (chipsBox) {
+            const categoriasConContenido = new Set(leccionesCache.map(l => l.categoria));
+            chipsBox.innerHTML = '';
+            CATEGORIAS_ACADEMIA
+                .filter(c => c.id === 'todos' || categoriasConContenido.has(c.id))
+                .forEach(cat => {
+                    const chip = document.createElement('button');
+                    chip.className = 'academia-chip' + (cat.id === categoriaAcademiaActiva ? ' active' : '');
+                    chip.textContent = `${cat.icono} ${cat.label}`;
+                    chip.addEventListener('click', () => {
+                        categoriaAcademiaActiva = cat.id;
+                        cargarAcademia();
+                    });
+                    chipsBox.appendChild(chip);
+                });
+        }
+
+        const visibles = categoriaAcademiaActiva === 'todos'
+            ? leccionesCache
+            : leccionesCache.filter(l => l.categoria === categoriaAcademiaActiva);
+
+        if (visibles.length === 0) {
+            container.innerHTML = leccionesCache.length === 0
+                ? `<div class="empty-state">Todavía no hay lecciones publicadas. El administrador puede agregarlas desde el panel Admin.</div>`
+                : `<div class="empty-state">No hay videos en esta categoría todavía.</div>`;
+            return;
+        }
+
+        container.innerHTML = '';
+        visibles.forEach(leccion => {
+            const cat = CATEGORIAS_ACADEMIA.find(c => c.id === leccion.categoria);
+            const card = document.createElement('div');
+            card.className = 'leccion-card';
+
+            // 🔒 SEGURIDAD: todo texto que viene de Firestore se escapa antes de ir a innerHTML.
+            // El youtube_id se valida con extraerYoutubeId() (solo acepta [a-zA-Z0-9_-]{11}),
+            // así que no puede inyectar comillas ni romper el atributo src del iframe.
+            const idSeguro = extraerYoutubeId(leccion.youtube_id);
+            if (!idSeguro) return; // documento corrupto: lo omitimos en vez de romper la vista
+
+            // Se usa youtube-nocookie.com (modo privacidad mejorada): no instala cookies de
+            // rastreo hasta que el usuario le da play al video.
+            card.innerHTML = `
+                <div class="leccion-video">
+                    <iframe
+                        src="https://www.youtube-nocookie.com/embed/${idSeguro}?rel=0"
+                        title="${escapeHtml(leccion.titulo)}"
+                        loading="lazy"
+                        allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
+                        allowfullscreen></iframe>
+                </div>
+                <div class="leccion-body">
+                    <div class="leccion-meta">
+                        <span class="leccion-cat">${cat ? cat.icono + ' ' + escapeHtml(cat.label) : escapeHtml(leccion.categoria || '')}</span>
+                        ${leccion.nivel ? `<span class="leccion-nivel ${escapeHtml(leccion.nivel)}">${escapeHtml(leccion.nivel)}</span>` : ''}
+                    </div>
+                    <div class="leccion-titulo">${escapeHtml(leccion.titulo)}</div>
+                    ${leccion.descripcion ? `<p class="leccion-desc">${escapeHtml(leccion.descripcion)}</p>` : ''}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    } catch (e) {
+        console.error("Error cargando la Academia:", e);
+        container.innerHTML = `<p style="color:var(--rojo-alerta); font-size:13px;">Error cargando las lecciones.</p>`;
+    }
+}
+
+// --- Panel Admin: CRUD de lecciones ---
+let leccionEditandoId = null;
+
+async function cargarGestionAcademiaAdmin() {
+    const listContainer = document.getElementById('admin-lecciones-list');
+    if (!listContainer) return;
+
+    // Poblamos el <select> de categorías una sola vez (omitiendo "todos", que es solo un filtro).
+    const selectCat = document.getElementById('leccion-categoria');
+    if (selectCat && selectCat.options.length === 0) {
+        CATEGORIAS_ACADEMIA.filter(c => c.id !== 'todos').forEach(cat => {
+            const opt = document.createElement('option');
+            opt.value = cat.id;
+            opt.textContent = `${cat.icono} ${cat.label}`;
+            selectCat.appendChild(opt);
+        });
+    }
+
+    listContainer.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
+
+    try {
+        const lecciones = await obtenerLecciones();
+        listContainer.innerHTML = '';
+
+        if (lecciones.length === 0) {
+            listContainer.innerHTML = `<div class="empty-state" style="padding:15px; font-size:12px;">Aún no has agregado ninguna lección. Usa el formulario de arriba.</div>`;
+            return;
+        }
+
+        lecciones.forEach(item => {
+            const cat = CATEGORIAS_ACADEMIA.find(c => c.id === item.categoria);
+            const div = document.createElement('div');
+            div.className = 'ticket-card';
+            div.innerHTML = `
+                <div class="ticket-card-header">
+                    <span style="font-size:12px;">${escapeHtml(item.titulo)}</span>
+                    <span style="color:var(--dorado); font-size:11px;">${cat ? escapeHtml(cat.label) : escapeHtml(item.categoria || '')}</span>
+                </div>
+                <div class="ticket-card-body">
+                    <p style="margin:0 0 8px 0; font-size:12px;">Nivel: ${escapeHtml(item.nivel || 'no definido')}</p>
+                    <div class="ticket-card-actions-row">
+                        <button class="btn-outline btn-small btn-editar-leccion" data-id="${item.id}">✏️ Editar</button>
+                        <button class="btn-outline btn-small btn-danger-outline btn-eliminar-leccion" data-id="${item.id}">🗑️ Eliminar</button>
+                    </div>
+                </div>
+            `;
+            listContainer.appendChild(div);
+        });
+
+        document.querySelectorAll('.btn-editar-leccion').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const item = lecciones.find(l => l.id === btn.dataset.id);
+                if (item) cargarLeccionEnFormulario(item);
+            });
+        });
+
+        document.querySelectorAll('.btn-eliminar-leccion').forEach(btn => {
+            btn.addEventListener('click', () => {
+                mostrarConfirmacion(
+                    "¿Eliminar esta lección?",
+                    "Esta acción no se puede deshacer. El video dejará de aparecer en la Academia para todos los jugadores.",
+                    async () => {
+                        try {
+                            await deleteDoc(doc(db, "lecciones", btn.dataset.id));
+                            mostrarModal("Lección Eliminada", "Se quitó de la Academia.", "🗑️", () => cargarGestionAcademiaAdmin());
+                        } catch (e) {
+                            console.error("Error eliminando lección:", e);
+                            mostrarModal("Error", "No se pudo eliminar la lección.", "❌");
+                        }
+                    },
+                    "🗑️"
+                );
+            });
+        });
+    } catch (e) {
+        console.error("Error cargando gestión de Academia:", e);
+        listContainer.innerHTML = `<p style="color:var(--rojo-alerta); font-size:12px;">Error cargando las lecciones.</p>`;
+    }
+}
+
+function cargarLeccionEnFormulario(item) {
+    leccionEditandoId = item.id;
+    document.getElementById('leccion-form-titulo').textContent = "Editando: " + item.titulo;
+    document.getElementById('leccion-titulo').value = item.titulo || '';
+    document.getElementById('leccion-url').value = item.youtube_id ? `https://www.youtube.com/watch?v=${item.youtube_id}` : '';
+    document.getElementById('leccion-categoria').value = item.categoria || 'putt';
+    document.getElementById('leccion-nivel').value = item.nivel || 'principiante';
+    document.getElementById('leccion-descripcion').value = item.descripcion || '';
+    actualizarPreviewLeccion();
+    document.getElementById('btnCancelarEdicionLeccion').classList.remove('hidden');
+    document.getElementById('leccion-form-box').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function limpiarFormularioLeccion() {
+    leccionEditandoId = null;
+    document.getElementById('leccion-form-titulo').textContent = "Agregar nueva lección";
+    document.getElementById('leccion-titulo').value = '';
+    document.getElementById('leccion-url').value = '';
+    document.getElementById('leccion-categoria').value = 'putt';
+    document.getElementById('leccion-nivel').value = 'principiante';
+    document.getElementById('leccion-descripcion').value = '';
+    actualizarPreviewLeccion();
+    document.getElementById('btnCancelarEdicionLeccion').classList.add('hidden');
+}
+
+// Vista previa en vivo: al pegar la URL, el admin ve de inmediato si el video se reconoció bien.
+function actualizarPreviewLeccion() {
+    const url = document.getElementById('leccion-url')?.value || '';
+    const preview = document.getElementById('leccion-preview');
+    const status = document.getElementById('leccion-url-status');
+    if (!preview || !status) return;
+
+    const id = extraerYoutubeId(url);
+    if (!url.trim()) {
+        preview.classList.add('hidden');
+        preview.innerHTML = '';
+        status.textContent = '';
+        return;
+    }
+    if (!id) {
+        preview.classList.add('hidden');
+        preview.innerHTML = '';
+        status.textContent = '⚠️ No se reconoció un video de YouTube válido en ese enlace.';
+        status.style.color = 'var(--rojo-alerta)';
+        return;
+    }
+    status.textContent = `✅ Video detectado (ID: ${id})`;
+    status.style.color = 'var(--verde-fairway)';
+    preview.classList.remove('hidden');
+    preview.innerHTML = `<iframe src="https://www.youtube-nocookie.com/embed/${id}?rel=0" title="Vista previa" loading="lazy" allowfullscreen></iframe>`;
+}
+document.getElementById('leccion-url')?.addEventListener('input', actualizarPreviewLeccion);
+document.getElementById('btnCancelarEdicionLeccion')?.addEventListener('click', limpiarFormularioLeccion);
+
+document.getElementById('btnGuardarLeccion')?.addEventListener('click', async () => {
+    const titulo = document.getElementById('leccion-titulo').value.trim();
+    const url = document.getElementById('leccion-url').value.trim();
+    const categoria = document.getElementById('leccion-categoria').value;
+    const nivel = document.getElementById('leccion-nivel').value;
+    const descripcion = document.getElementById('leccion-descripcion').value.trim();
+
+    if (!titulo) {
+        mostrarModal("Falta el título", "Ponle un título descriptivo a la lección.", "⚠️");
+        return;
+    }
+    const youtubeId = extraerYoutubeId(url);
+    if (!youtubeId) {
+        mostrarModal("Enlace inválido", "Pega un enlace válido de YouTube (o el ID del video de 11 caracteres).", "⚠️");
+        return;
+    }
+
+    const data = {
+        titulo,
+        youtube_id: youtubeId,
+        categoria,
+        nivel,
+        descripcion,
+        updated_at: serverTimestamp()
+    };
+
+    try {
+        if (leccionEditandoId) {
+            await updateDoc(doc(db, "lecciones", leccionEditandoId), data);
+            mostrarModal("Lección Actualizada", "Los cambios se guardaron correctamente.", "✅");
+        } else {
+            data.created_at = serverTimestamp();
+            await addDoc(collection(db, "lecciones"), data);
+            mostrarModal("Lección Agregada", "Ya aparece en la Academia para todos los jugadores.", "🎓");
+        }
+        limpiarFormularioLeccion();
+        cargarGestionAcademiaAdmin();
+    } catch (e) {
+        console.error("Error guardando lección:", e);
+        mostrarModal("Error", "No se pudo guardar la lección.", "❌");
+    }
+});
+
+// --- Enganche de navegación ---
+// La función switchTab() original recorre el arreglo 'tabs' para mostrar/ocultar pestañas.
+// Como 'academia' no está en ese arreglo, aquí registramos el listener del botón por separado
+// y llamamos a switchTab('academia') -- que funciona igual porque busca los IDs por convención
+// (tab-academia / content-academia). Después cargamos el contenido.
+document.getElementById('tab-academia')?.addEventListener('click', () => {
+    // Ocultamos manualmente el resto de pestañas conocidas para que no queden dos visibles.
+    ['torneos','apuestas','ranking','perfil','reglas','catalogo','admin'].forEach(t => {
+        document.getElementById(`tab-${t}`)?.classList.remove('active');
+        document.getElementById(`content-${t}`)?.classList.add('hidden');
+    });
+    document.getElementById('tab-academia')?.classList.add('active');
+    document.getElementById('content-academia')?.classList.remove('hidden');
+    cargarAcademia();
+    // Cierra el menú lateral en móvil, igual que hacen las demás pestañas.
+    document.getElementById('main-nav-tabs')?.classList.remove('open');
+    document.getElementById('btnHamburger')?.classList.remove('open');
+    document.getElementById('mobileMenuOverlay')?.classList.remove('visible');
+});
+
+// Cuando el usuario navega a CUALQUIER otra pestaña, ocultamos Academia.
+// (switchTab original no la conoce, así que lo cubrimos aquí.)
+['torneos','apuestas','ranking','perfil','reglas','catalogo','admin'].forEach(t => {
+    document.getElementById(`tab-${t}`)?.addEventListener('click', () => {
+        document.getElementById('tab-academia')?.classList.remove('active');
+        document.getElementById('content-academia')?.classList.add('hidden');
+    });
+});
+
+// El panel Admin carga su sección de Academia al abrirse.
+document.getElementById('tab-admin')?.addEventListener('click', () => {
+    if (auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        cargarGestionAcademiaAdmin();
+    }
+});
