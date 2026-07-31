@@ -561,3 +561,165 @@ input[type="range"] { width: 100%; margin: 20px 0; accent-color: var(--dorado); 
 .spinner { border: 3px solid rgba(18,59,44,0.15); border-radius: 50%; border-top: 3px solid var(--verde-fairway); width: 16px; height: 16px; animation: spin 1s linear infinite; display: inline-block; }
 .btn-primary .spinner { border-top: 3px solid var(--bg-crema); }
 @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+
+/* =====================================================================
+   🎓 MÓDULO ACADEMIA: videos de aprendizaje
+   Píldoras de categoría + tarjetas de video responsivas.
+   ===================================================================== */
+
+/* Filtros de categoría: fila horizontal con scroll lateral en móvil,
+   para que nunca se desborden ni rompan el layout aunque haya muchas. */
+.academia-chips {
+    display: flex;
+    gap: 8px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    margin-bottom: 6px;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+}
+.academia-chips::-webkit-scrollbar { height: 4px; }
+.academia-chips::-webkit-scrollbar-thumb { background: var(--borde-suave); border-radius: 4px; }
+
+.academia-chip {
+    /* width:auto y margin-bottom:0 anulan la regla global de <button> (width:100%) */
+    width: auto;
+    margin-bottom: 0;
+    flex: 0 0 auto;
+    padding: 8px 14px;
+    font-size: 12.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    border-radius: 20px;
+    border: 1px solid var(--borde-suave);
+    background: var(--blanco);
+    color: var(--texto-gris);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+.academia-chip:hover {
+    border-color: var(--verde-fairway);
+    color: var(--verde-fairway);
+}
+.academia-chip.active {
+    background: var(--verde-fairway);
+    border-color: var(--verde-fairway);
+    color: var(--dorado-suave);
+}
+
+/* Grilla de videos: 1 columna en móvil, 2 en pantallas anchas (ver media query al final). */
+.academia-container {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 18px;
+    margin-top: 10px;
+    margin-bottom: 22px;
+}
+
+.leccion-card {
+    background: var(--blanco);
+    border: 1px solid var(--borde-suave);
+    border-radius: 14px;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    box-shadow: 0 4px 14px rgba(18,59,44,0.06);
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.leccion-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 14px 30px rgba(18,59,44,0.14);
+}
+
+/* Contenedor con proporción 16:9 fija: el iframe se adapta a cualquier ancho
+   sin deformarse ni provocar saltos de layout mientras carga. */
+.leccion-video {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--verde-oscuro);
+}
+.leccion-video iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+.leccion-body { padding: 14px 16px 16px; display: flex; flex-direction: column; flex: 1; }
+
+.leccion-meta {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+}
+.leccion-cat {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--verde-fairway);
+    background: rgba(18,59,44,0.07);
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.leccion-nivel {
+    font-size: 9.5px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    padding: 3px 9px;
+    border-radius: 20px;
+    white-space: nowrap;
+}
+.leccion-nivel.principiante { background: #D7E8D4; color: #2C5427; }
+.leccion-nivel.intermedio { background: var(--dorado-suave); color: #5A4718; }
+.leccion-nivel.avanzado { background: #E5D3CE; color: #7A2E1F; }
+
+.leccion-titulo {
+    font-family: 'Playfair Display', serif;
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--texto-oscuro);
+    line-height: 1.35;
+    margin-bottom: 6px;
+}
+.leccion-desc {
+    font-size: 12.5px;
+    color: var(--texto-gris);
+    line-height: 1.55;
+    margin: 0;
+}
+
+/* Vista previa del video en el formulario del panel Admin */
+.leccion-preview {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 9;
+    background: var(--verde-oscuro);
+    border-radius: 8px;
+    overflow: hidden;
+    margin-bottom: 14px;
+    border: 1px solid var(--borde-suave);
+}
+.leccion-preview iframe {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    border: 0;
+    display: block;
+}
+
+/* En pantallas anchas la grilla pasa a 2 columnas.
+   Nota: el breakpoint coincide con el de #lobby-screen (max-width:860px), que es cuando
+   la tarjeta principal se ensancha y hay espacio real para dos videos lado a lado. */
+@media (min-width: 900px) {
+    .academia-container { grid-template-columns: repeat(2, 1fr); }
+}
+
