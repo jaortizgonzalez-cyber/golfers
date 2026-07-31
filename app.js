@@ -1921,6 +1921,7 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
 })();
 
 
+
 // =====================================================================
 // --- 🎓 MÓDULO ACADEMIA: videos de aprendizaje de golf ---
 //
@@ -1988,6 +1989,24 @@ async function obtenerLecciones() {
     return items;
 }
 
+// Puebla el <select> de categorías del formulario del panel Admin.
+// 🔧 Se ejecuta INMEDIATAMENTE al cargar este archivo (no depende de ningún clic), porque
+// el <select> ya existe en el HTML estático desde el inicio. Antes esto vivía dentro de
+// cargarGestionAcademiaAdmin(), que solo corría al hacer clic en la pestaña Admin -- y ese
+// listener nunca llegaba a registrarse (ver nota del bug más abajo), dejando el desplegable
+// de categoría permanentemente vacío.
+function poblarSelectCategorias() {
+    const selectCat = document.getElementById('leccion-categoria');
+    if (!selectCat || selectCat.options.length > 0) return;
+    CATEGORIAS_ACADEMIA.filter(c => c.id !== 'todos').forEach(cat => {
+        const opt = document.createElement('option');
+        opt.value = cat.id;
+        opt.textContent = `${cat.icono} ${cat.label}`;
+        selectCat.appendChild(opt);
+    });
+}
+poblarSelectCategorias();
+
 // --- Vista del jugador: pestaña "Academia" ---
 async function cargarAcademia() {
     const chipsBox = document.getElementById('academia-categorias');
@@ -2003,18 +2022,26 @@ async function cargarAcademia() {
         if (chipsBox) {
             const categoriasConContenido = new Set(leccionesCache.map(l => l.categoria));
             chipsBox.innerHTML = '';
-            CATEGORIAS_ACADEMIA
-                .filter(c => c.id === 'todos' || categoriasConContenido.has(c.id))
-                .forEach(cat => {
-                    const chip = document.createElement('button');
-                    chip.className = 'academia-chip' + (cat.id === categoriaAcademiaActiva ? ' active' : '');
-                    chip.textContent = `${cat.icono} ${cat.label}`;
-                    chip.addEventListener('click', () => {
-                        categoriaAcademiaActiva = cat.id;
-                        cargarAcademia();
+
+            // Si no hay ninguna lección todavía, no tiene sentido mostrar solo la píldora "Todos"
+            // sola y huérfana -- se oculta la barra de filtros por completo hasta que haya contenido.
+            if (leccionesCache.length === 0) {
+                chipsBox.classList.add('hidden');
+            } else {
+                chipsBox.classList.remove('hidden');
+                CATEGORIAS_ACADEMIA
+                    .filter(c => c.id === 'todos' || categoriasConContenido.has(c.id))
+                    .forEach(cat => {
+                        const chip = document.createElement('button');
+                        chip.className = 'academia-chip' + (cat.id === categoriaAcademiaActiva ? ' active' : '');
+                        chip.textContent = `${cat.icono} ${cat.label}`;
+                        chip.addEventListener('click', () => {
+                            categoriaAcademiaActiva = cat.id;
+                            cargarAcademia();
+                        });
+                        chipsBox.appendChild(chip);
                     });
-                    chipsBox.appendChild(chip);
-                });
+            }
         }
 
         const visibles = categoriaAcademiaActiva === 'todos'
@@ -2064,7 +2091,7 @@ async function cargarAcademia() {
         });
     } catch (e) {
         console.error("Error cargando la Academia:", e);
-        container.innerHTML = `<p style="color:var(--rojo-alerta); font-size:13px;">Error cargando las lecciones.</p>`;
+        container.innerHTML = `<p style="color:var(--rojo-alerta); font-size:13px;">Error cargando las lecciones. Si eres el administrador, revisa que la regla de Firestore para la colección "lecciones" esté desplegada.</p>`;
     }
 }
 
@@ -2075,16 +2102,7 @@ async function cargarGestionAcademiaAdmin() {
     const listContainer = document.getElementById('admin-lecciones-list');
     if (!listContainer) return;
 
-    // Poblamos el <select> de categorías una sola vez (omitiendo "todos", que es solo un filtro).
-    const selectCat = document.getElementById('leccion-categoria');
-    if (selectCat && selectCat.options.length === 0) {
-        CATEGORIAS_ACADEMIA.filter(c => c.id !== 'todos').forEach(cat => {
-            const opt = document.createElement('option');
-            opt.value = cat.id;
-            opt.textContent = `${cat.icono} ${cat.label}`;
-            selectCat.appendChild(opt);
-        });
-    }
+    poblarSelectCategorias(); // por si el formulario se renderizó después
 
     listContainer.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
 
@@ -2144,7 +2162,7 @@ async function cargarGestionAcademiaAdmin() {
         });
     } catch (e) {
         console.error("Error cargando gestión de Academia:", e);
-        listContainer.innerHTML = `<p style="color:var(--rojo-alerta); font-size:12px;">Error cargando las lecciones.</p>`;
+        listContainer.innerHTML = `<p style="color:var(--rojo-alerta); font-size:12px;">Error cargando las lecciones. Revisa que la regla de Firestore para la colección "lecciones" esté desplegada.</p>`;
     }
 }
 
@@ -2241,42 +2259,49 @@ document.getElementById('btnGuardarLeccion')?.addEventListener('click', async ()
         cargarGestionAcademiaAdmin();
     } catch (e) {
         console.error("Error guardando lección:", e);
-        mostrarModal("Error", "No se pudo guardar la lección.", "❌");
+        mostrarModal("Error", "No se pudo guardar la lección. Revisa que la regla de Firestore para \"lecciones\" esté desplegada y que estés usando la cuenta de administrador.", "❌");
     }
 });
 
 // --- Enganche de navegación ---
-// La función switchTab() original recorre el arreglo 'tabs' para mostrar/ocultar pestañas.
-// Como 'academia' no está en ese arreglo, aquí registramos el listener del botón por separado
-// y llamamos a switchTab('academia') -- que funciona igual porque busca los IDs por convención
-// (tab-academia / content-academia). Después cargamos el contenido.
-document.getElementById('tab-academia')?.addEventListener('click', () => {
-    // Ocultamos manualmente el resto de pestañas conocidas para que no queden dos visibles.
-    ['torneos','apuestas','ranking','perfil','reglas','catalogo','admin'].forEach(t => {
-        document.getElementById(`tab-${t}`)?.classList.remove('active');
-        document.getElementById(`content-${t}`)?.classList.add('hidden');
-    });
-    document.getElementById('tab-academia')?.classList.add('active');
-    document.getElementById('content-academia')?.classList.remove('hidden');
-    cargarAcademia();
-    // Cierra el menú lateral en móvil, igual que hacen las demás pestañas.
-    document.getElementById('main-nav-tabs')?.classList.remove('open');
-    document.getElementById('btnHamburger')?.classList.remove('open');
-    document.getElementById('mobileMenuOverlay')?.classList.remove('visible');
-});
+//
+// 🐛 BUG CORREGIDO: antes este bloque hacía
+//        document.getElementById('tab-admin')?.addEventListener('click', ...)
+//    ejecutándose al cargar app.js. Pero el botón #tab-admin NO EXISTE en ese momento:
+//    verificarPermisosAdmin() lo crea dinámicamente con createElement() DESPUÉS del login.
+//    El operador '?.' evitaba el error en consola, pero el listener nunca llegaba a
+//    registrarse -- por eso cargarGestionAcademiaAdmin() jamás se ejecutaba y el desplegable
+//    de categoría del formulario quedaba vacío ("la categoría no carga nada").
+//
+//    Solución: DELEGACIÓN DE EVENTOS sobre #main-nav-tabs, que sí existe siempre en el HTML
+//    estático. Así se capturan los clics de cualquier pestaña, incluidas las que se crean
+//    después (como Admin), sin depender del orden de carga.
+document.getElementById('main-nav-tabs')?.addEventListener('click', (e) => {
+    const btn = e.target.closest('.tab-btn');
+    if (!btn) return;
 
-// Cuando el usuario navega a CUALQUIER otra pestaña, ocultamos Academia.
-// (switchTab original no la conoce, así que lo cubrimos aquí.)
-['torneos','apuestas','ranking','perfil','reglas','catalogo','admin'].forEach(t => {
-    document.getElementById(`tab-${t}`)?.addEventListener('click', () => {
+    if (btn.id === 'tab-academia') {
+        // Ocultamos el resto de pestañas conocidas para que no queden dos visibles a la vez.
+        ['torneos','apuestas','ranking','perfil','reglas','catalogo','admin'].forEach(t => {
+            document.getElementById(`tab-${t}`)?.classList.remove('active');
+            document.getElementById(`content-${t}`)?.classList.add('hidden');
+        });
+        btn.classList.add('active');
+        document.getElementById('content-academia')?.classList.remove('hidden');
+        cargarAcademia();
+
+        // Cierra el menú lateral en móvil, igual que hacen las demás pestañas.
+        document.getElementById('main-nav-tabs')?.classList.remove('open');
+        document.getElementById('btnHamburger')?.classList.remove('open');
+        document.getElementById('mobileMenuOverlay')?.classList.remove('visible');
+    } else {
+        // Cualquier otra pestaña: ocultamos Academia (switchTab original no la conoce).
         document.getElementById('tab-academia')?.classList.remove('active');
         document.getElementById('content-academia')?.classList.add('hidden');
-    });
-});
 
-// El panel Admin carga su sección de Academia al abrirse.
-document.getElementById('tab-admin')?.addEventListener('click', () => {
-    if (auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-        cargarGestionAcademiaAdmin();
+        // Si es la pestaña Admin, cargamos su sección de gestión de la Academia.
+        if (btn.id === 'tab-admin' && auth.currentUser?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+            cargarGestionAcademiaAdmin();
+        }
     }
 });
