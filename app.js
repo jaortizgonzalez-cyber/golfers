@@ -1922,6 +1922,7 @@ document.getElementById('btnPagarBold').addEventListener('click', async () => {
 
 
 
+
 // =====================================================================
 // --- 🎓 MÓDULO ACADEMIA: videos de aprendizaje de golf ---
 //
@@ -1951,6 +1952,7 @@ const CATEGORIAS_ACADEMIA = [
 
 let categoriaAcademiaActiva = 'todos';
 let leccionesCache = [];
+let academiaYaRenderizada = false; // evita re-renderizar (y recargar videos) innecesariamente
 
 // Extrae el ID de video de cualquier formato de URL de YouTube que el admin pegue:
 //   https://www.youtube.com/watch?v=ABC123      -> ABC123
@@ -1990,11 +1992,8 @@ async function obtenerLecciones() {
 }
 
 // Puebla el <select> de categorías del formulario del panel Admin.
-// 🔧 Se ejecuta INMEDIATAMENTE al cargar este archivo (no depende de ningún clic), porque
-// el <select> ya existe en el HTML estático desde el inicio. Antes esto vivía dentro de
-// cargarGestionAcademiaAdmin(), que solo corría al hacer clic en la pestaña Admin -- y ese
-// listener nunca llegaba a registrarse (ver nota del bug más abajo), dejando el desplegable
-// de categoría permanentemente vacío.
+// Se ejecuta INMEDIATAMENTE al cargar este archivo (no depende de ningún clic), porque
+// el <select> ya existe en el HTML estático desde el inicio.
 function poblarSelectCategorias() {
     const selectCat = document.getElementById('leccion-categoria');
     if (!selectCat || selectCat.options.length > 0) return;
@@ -2007,25 +2006,86 @@ function poblarSelectCategorias() {
 }
 poblarSelectCategorias();
 
+// =====================================================================
+// 🎬 FILTRADO SIN RECARGAR LOS VIDEOS
+//
+// Antes, cada clic en una categoría hacía container.innerHTML = '' y volvía a construir todas
+// las tarjetas. Al recrear un <iframe>, el navegador lo trata como un elemento nuevo y lo carga
+// desde cero -- por eso el video que estabas viendo se reiniciaba (y encima se re-consultaba
+// Firestore en cada clic, sin necesidad).
+//
+// Ahora las tarjetas se renderizan UNA SOLA VEZ y el filtro solo alterna su visibilidad con la
+// clase .hidden. Los iframes nunca se destruyen, así que un video en reproducción sigue corriendo
+// mientras su tarjeta permanezca visible.
+//
+// Detalle importante: si una tarjeta SÍ se oculta por el filtro, le vaciamos el src para que el
+// video se detenga de verdad. Sin esto, un iframe con display:none sigue reproduciendo el audio
+// de fondo -- el usuario escucharía un video "fantasma" que ya no ve en pantalla. Al volver a
+// mostrarla, se le restaura el src (arranca limpia, sin reproducir).
+// =====================================================================
+function aplicarFiltroAcademia(nuevaCategoria) {
+    categoriaAcademiaActiva = nuevaCategoria;
+
+    // Actualiza el estado visual de las píldoras.
+    document.querySelectorAll('#academia-categorias .academia-chip').forEach(chip => {
+        chip.classList.toggle('active', chip.dataset.cat === nuevaCategoria);
+    });
+
+    const container = document.getElementById('academia-list');
+    if (!container) return;
+
+    let visiblesCount = 0;
+    container.querySelectorAll('.leccion-card').forEach(card => {
+        const coincide = (nuevaCategoria === 'todos') || (card.dataset.categoria === nuevaCategoria);
+        const iframe = card.querySelector('iframe');
+
+        if (coincide) {
+            card.classList.remove('hidden');
+            visiblesCount++;
+            // Si venía oculta (src vaciado), le restauramos su fuente original.
+            if (iframe && !iframe.getAttribute('src')) {
+                iframe.setAttribute('src', iframe.dataset.src);
+            }
+        } else {
+            card.classList.add('hidden');
+            // Detiene la reproducción y el audio de la tarjeta que se va a ocultar.
+            if (iframe && iframe.getAttribute('src')) {
+                iframe.setAttribute('src', '');
+            }
+        }
+    });
+
+    // Mensaje de "sin resultados" para la categoría seleccionada.
+    const vacio = document.getElementById('academia-vacio');
+    if (vacio) vacio.classList.toggle('hidden', visiblesCount > 0);
+}
+
 // --- Vista del jugador: pestaña "Academia" ---
-async function cargarAcademia() {
+// forzarRecarga = true cuando el admin acaba de agregar/editar/borrar y hay que traer datos frescos.
+async function cargarAcademia(forzarRecarga = false) {
     const chipsBox = document.getElementById('academia-categorias');
     const container = document.getElementById('academia-list');
     if (!container) return;
+
+    // Si ya está renderizado y no se pide recarga, solo reaplicamos el filtro actual.
+    // Así, al volver a la pestaña Academia, los videos tampoco se reinician.
+    if (academiaYaRenderizada && !forzarRecarga) {
+        aplicarFiltroAcademia(categoriaAcademiaActiva);
+        return;
+    }
 
     container.innerHTML = '<div class="text-center"><span class="spinner" style="border-top-color:var(--verde-fairway)"></span></div>';
 
     try {
         leccionesCache = await obtenerLecciones();
 
-        // Píldoras de categoría (solo se muestran las que tienen al menos un video, más "Todos").
+        // --- Píldoras de categoría (solo las que tienen al menos un video, más "Todos") ---
         if (chipsBox) {
             const categoriasConContenido = new Set(leccionesCache.map(l => l.categoria));
             chipsBox.innerHTML = '';
 
-            // Si no hay ninguna lección todavía, no tiene sentido mostrar solo la píldora "Todos"
-            // sola y huérfana -- se oculta la barra de filtros por completo hasta que haya contenido.
             if (leccionesCache.length === 0) {
+                // Sin contenido no tiene sentido mostrar una píldora "Todos" huérfana.
                 chipsBox.classList.add('hidden');
             } else {
                 chipsBox.classList.remove('hidden');
@@ -2034,32 +2094,26 @@ async function cargarAcademia() {
                     .forEach(cat => {
                         const chip = document.createElement('button');
                         chip.className = 'academia-chip' + (cat.id === categoriaAcademiaActiva ? ' active' : '');
+                        chip.dataset.cat = cat.id;
                         chip.textContent = `${cat.icono} ${cat.label}`;
-                        chip.addEventListener('click', () => {
-                            categoriaAcademiaActiva = cat.id;
-                            cargarAcademia();
-                        });
+                        // ✅ El clic ya NO llama a cargarAcademia() (que re-renderizaba todo):
+                        //    solo alterna visibilidad, sin tocar los iframes existentes.
+                        chip.addEventListener('click', () => aplicarFiltroAcademia(cat.id));
                         chipsBox.appendChild(chip);
                     });
             }
         }
 
-        const visibles = categoriaAcademiaActiva === 'todos'
-            ? leccionesCache
-            : leccionesCache.filter(l => l.categoria === categoriaAcademiaActiva);
-
-        if (visibles.length === 0) {
-            container.innerHTML = leccionesCache.length === 0
-                ? `<div class="empty-state">Todavía no hay lecciones publicadas. El administrador puede agregarlas desde el panel Admin.</div>`
-                : `<div class="empty-state">No hay videos en esta categoría todavía.</div>`;
+        if (leccionesCache.length === 0) {
+            container.innerHTML = `<div class="empty-state">Todavía no hay lecciones publicadas. El administrador puede agregarlas desde el panel Admin.</div>`;
+            academiaYaRenderizada = false;
             return;
         }
 
+        // --- Renderizamos TODAS las tarjetas una sola vez ---
         container.innerHTML = '';
-        visibles.forEach(leccion => {
+        leccionesCache.forEach(leccion => {
             const cat = CATEGORIAS_ACADEMIA.find(c => c.id === leccion.categoria);
-            const card = document.createElement('div');
-            card.className = 'leccion-card';
 
             // 🔒 SEGURIDAD: todo texto que viene de Firestore se escapa antes de ir a innerHTML.
             // El youtube_id se valida con extraerYoutubeId() (solo acepta [a-zA-Z0-9_-]{11}),
@@ -2067,12 +2121,21 @@ async function cargarAcademia() {
             const idSeguro = extraerYoutubeId(leccion.youtube_id);
             if (!idSeguro) return; // documento corrupto: lo omitimos en vez de romper la vista
 
+            const srcVideo = `https://www.youtube-nocookie.com/embed/${idSeguro}?rel=0`;
+
+            const card = document.createElement('div');
+            card.className = 'leccion-card';
+            // El filtro usa este atributo para decidir si mostrar u ocultar la tarjeta.
+            card.dataset.categoria = leccion.categoria || '';
+
             // Se usa youtube-nocookie.com (modo privacidad mejorada): no instala cookies de
             // rastreo hasta que el usuario le da play al video.
+            // data-src guarda la URL original para poder restaurarla tras ocultar/mostrar.
             card.innerHTML = `
                 <div class="leccion-video">
                     <iframe
-                        src="https://www.youtube-nocookie.com/embed/${idSeguro}?rel=0"
+                        src="${srcVideo}"
+                        data-src="${srcVideo}"
                         title="${escapeHtml(leccion.titulo)}"
                         loading="lazy"
                         allow="accelerometer; encrypted-media; gyroscope; picture-in-picture"
@@ -2089,8 +2152,19 @@ async function cargarAcademia() {
             `;
             container.appendChild(card);
         });
+
+        // Mensaje reutilizable para cuando una categoría no tenga videos visibles.
+        const vacio = document.createElement('div');
+        vacio.id = 'academia-vacio';
+        vacio.className = 'empty-state hidden';
+        vacio.textContent = 'No hay videos en esta categoría todavía.';
+        container.appendChild(vacio);
+
+        academiaYaRenderizada = true;
+        aplicarFiltroAcademia(categoriaAcademiaActiva);
     } catch (e) {
         console.error("Error cargando la Academia:", e);
+        academiaYaRenderizada = false;
         container.innerHTML = `<p style="color:var(--rojo-alerta); font-size:13px;">Error cargando las lecciones. Si eres el administrador, revisa que la regla de Firestore para la colección "lecciones" esté desplegada.</p>`;
     }
 }
@@ -2150,6 +2224,7 @@ async function cargarGestionAcademiaAdmin() {
                     async () => {
                         try {
                             await deleteDoc(doc(db, "lecciones", btn.dataset.id));
+                            academiaYaRenderizada = false; // el catálogo cambió: forzar re-render
                             mostrarModal("Lección Eliminada", "Se quitó de la Academia.", "🗑️", () => cargarGestionAcademiaAdmin());
                         } catch (e) {
                             console.error("Error eliminando lección:", e);
@@ -2255,6 +2330,7 @@ document.getElementById('btnGuardarLeccion')?.addEventListener('click', async ()
             await addDoc(collection(db, "lecciones"), data);
             mostrarModal("Lección Agregada", "Ya aparece en la Academia para todos los jugadores.", "🎓");
         }
+        academiaYaRenderizada = false; // el catálogo cambió: forzar re-render la próxima vez
         limpiarFormularioLeccion();
         cargarGestionAcademiaAdmin();
     } catch (e) {
@@ -2265,17 +2341,10 @@ document.getElementById('btnGuardarLeccion')?.addEventListener('click', async ()
 
 // --- Enganche de navegación ---
 //
-// 🐛 BUG CORREGIDO: antes este bloque hacía
-//        document.getElementById('tab-admin')?.addEventListener('click', ...)
-//    ejecutándose al cargar app.js. Pero el botón #tab-admin NO EXISTE en ese momento:
-//    verificarPermisosAdmin() lo crea dinámicamente con createElement() DESPUÉS del login.
-//    El operador '?.' evitaba el error en consola, pero el listener nunca llegaba a
-//    registrarse -- por eso cargarGestionAcademiaAdmin() jamás se ejecutaba y el desplegable
-//    de categoría del formulario quedaba vacío ("la categoría no carga nada").
-//
-//    Solución: DELEGACIÓN DE EVENTOS sobre #main-nav-tabs, que sí existe siempre en el HTML
-//    estático. Así se capturan los clics de cualquier pestaña, incluidas las que se crean
-//    después (como Admin), sin depender del orden de carga.
+// Se usa DELEGACIÓN DE EVENTOS sobre #main-nav-tabs (que siempre existe en el HTML estático),
+// en vez de escuchar directamente a cada botón. Esto es necesario porque #tab-admin NO existe
+// al cargar app.js: verificarPermisosAdmin() lo crea dinámicamente DESPUÉS del login. Con
+// delegación capturamos los clics de cualquier pestaña, incluidas las creadas más tarde.
 document.getElementById('main-nav-tabs')?.addEventListener('click', (e) => {
     const btn = e.target.closest('.tab-btn');
     if (!btn) return;
@@ -2288,7 +2357,7 @@ document.getElementById('main-nav-tabs')?.addEventListener('click', (e) => {
         });
         btn.classList.add('active');
         document.getElementById('content-academia')?.classList.remove('hidden');
-        cargarAcademia();
+        cargarAcademia(); // sin forzar: si ya estaba renderizada, no recarga los videos
 
         // Cierra el menú lateral en móvil, igual que hacen las demás pestañas.
         document.getElementById('main-nav-tabs')?.classList.remove('open');
