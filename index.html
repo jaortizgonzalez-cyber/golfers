@@ -27,29 +27,18 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:ital,wght@0,600;0,700;1,600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="style.css?v=20260803-cinematic">
+    <link rel="stylesheet" href="style.css?v=20260804">
 </head>
 <body>
 
-    <!-- EXPERIENCIA WOW: bienvenida cinematográfica después del inicio de sesión -->
     <div id="golf-welcome" class="golf-welcome hidden" aria-hidden="true">
-        <div class="golf-welcome-sky"></div>
-        <div class="golf-welcome-rays"></div>
-        <div class="golf-welcome-course">
-            <div class="golf-welcome-fairway"></div>
-            <div class="golf-welcome-green"></div>
-            <div class="golf-hole-shadow"></div>
-            <div class="golf-flag-pole"><span class="golf-flag"></span></div>
-            <div class="golf-ball-wrap"><span class="golf-ball"></span><span class="golf-ball-trail"></span></div>
-        </div>
-        <div class="golf-welcome-content">
-            <img src="logo-golfers.jpg" alt="Golfers" class="golf-welcome-logo">
-            <p class="golf-welcome-kicker">BIENVENIDO AL CLUB</p>
-            <h2 id="golf-welcome-name">Jugador</h2>
-            <p class="golf-welcome-message">Tu próxima gran jugada comienza aquí.</p>
-            <div class="golf-welcome-line"></div>
-        </div>
-        <button id="btnSkipGolfWelcome" class="golf-welcome-skip" type="button">Saltar introducción</button>
+      <div class="golf-welcome-sky"></div>
+      <div class="wow-curtain wow-curtain-left"><span>G</span></div><div class="wow-curtain wow-curtain-right"><span>G</span></div>
+      <div class="wow-swing-scene"><div class="wow-club-title">GOLFERS <small>PRIVATE CLUB</small></div><div class="wow-golfer"><i class="wow-head"></i><i class="wow-body"></i><i class="wow-arm"></i><i class="wow-leg-a"></i><i class="wow-leg-b"></i><i class="wow-club"></i></div><div class="wow-tee-ball"></div><div class="wow-impact"></div><div class="wow-flight-line"></div></div>
+      <div class="golf-welcome-course"><div class="golf-welcome-green"></div><div class="golf-hole-shadow"></div><div class="golf-flag-pole"><span class="golf-flag"></span></div><div class="golf-ball-wrap"><span class="golf-ball"></span></div></div>
+      <div class="golf-welcome-content"><img src="logo-golfers.jpg" alt="Golfers" class="golf-welcome-logo"><p class="golf-welcome-kicker">BIENVENIDO AL CLUB</p><h2 id="golf-welcome-name">Jugador</h2><p class="golf-welcome-message">El torneo comienza antes del primer golpe.</p><div class="golf-welcome-line"></div><button id="btnEnterGolfers" class="wow-enter" type="button">ENTRAR AL CLUB <b>→</b></button></div>
+      <div class="wow-gold-particles"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+      <button id="btnSkipGolfWelcome" class="golf-welcome-skip" type="button">Saltar</button>
     </div>
 
     <!-- MODAL / POPUP -->
@@ -477,6 +466,6 @@
         </div>
         <button id="btnVolverInicio" class="btn-primary">Ver mis apuestas</button>
     </div>
-    <script type="module" src="app.js?v=20260803-cinematic"></script>
+    <script type="module" src="app.js?v=20260804"></script>
 </body>
 </html>

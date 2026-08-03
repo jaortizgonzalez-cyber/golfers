@@ -143,36 +143,14 @@ hamburgerBtn?.addEventListener('click', toggleMobileMenu);
 mobileOverlay?.addEventListener('click', closeMobileMenu);
 
 
-
-// --- EXPERIENCIA WOW: bienvenida cinematografica de golf ---
+// --- EXPERIENCIA WOW 3.0: entrada cinematografica ---
 const golfWelcome = document.getElementById('golf-welcome');
 const btnSkipGolfWelcome = document.getElementById('btnSkipGolfWelcome');
+const btnEnterGolfers = document.getElementById('btnEnterGolfers');
 let golfWelcomeTimer = null;
-
-function cerrarBienvenidaGolf() {
-    if (!golfWelcome || golfWelcome.classList.contains('hidden')) return;
-    golfWelcome.classList.add('is-closing');
-    clearTimeout(golfWelcomeTimer);
-    window.setTimeout(() => {
-        golfWelcome.classList.add('hidden');
-        golfWelcome.classList.remove('is-playing', 'is-closing');
-        golfWelcome.setAttribute('aria-hidden', 'true');
-    }, 600);
-}
-
-function mostrarBienvenidaGolf(nombreCompleto) {
-    if (!golfWelcome || sessionStorage.getItem('golfWelcomeShown') === '1') return;
-    sessionStorage.setItem('golfWelcomeShown', '1');
-    const primerNombre = String(nombreCompleto || 'Jugador').trim().split(/\s+/)[0] || 'Jugador';
-    document.getElementById('golf-welcome-name').textContent = primerNombre;
-    golfWelcome.classList.remove('hidden', 'is-closing');
-    golfWelcome.classList.add('is-playing');
-    golfWelcome.setAttribute('aria-hidden', 'false');
-    golfWelcomeTimer = window.setTimeout(cerrarBienvenidaGolf, 6250);
-}
-
-btnSkipGolfWelcome?.addEventListener('click', cerrarBienvenidaGolf);
-
+function cerrarBienvenidaGolf(){if(!golfWelcome||golfWelcome.classList.contains('hidden'))return;golfWelcome.classList.add('is-closing');clearTimeout(golfWelcomeTimer);setTimeout(()=>{golfWelcome.classList.add('hidden');golfWelcome.classList.remove('is-closing');golfWelcome.setAttribute('aria-hidden','true');document.body.style.overflow='';},720)}
+function mostrarBienvenidaGolf(nombreCompleto){if(!golfWelcome||sessionStorage.getItem('golfWelcomeShown')==='1')return;sessionStorage.setItem('golfWelcomeShown','1');const primerNombre=String(nombreCompleto||'Jugador').trim().split(/\s+/)[0]||'Jugador';document.getElementById('golf-welcome-name').textContent=primerNombre;golfWelcome.classList.remove('hidden','is-closing');golfWelcome.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';golfWelcomeTimer=setTimeout(cerrarBienvenidaGolf,10500)}
+btnSkipGolfWelcome?.addEventListener('click',cerrarBienvenidaGolf);btnEnterGolfers?.addEventListener('click',cerrarBienvenidaGolf);
 
 // --- AUTENTICACIÓN Y PERFIL ---
 onAuthStateChanged(auth, async (user) => {
