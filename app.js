@@ -149,7 +149,7 @@ const btnSkipIntro = document.getElementById('btnSkipIntro');
 const btnEnterClub = document.getElementById('btnEnterClub');
 let golfIntroTimer = null;
 function closeGolfIntro(){if(!golfWelcome||golfWelcome.classList.contains('hidden'))return;golfWelcome.classList.add('closing');clearTimeout(golfIntroTimer);setTimeout(()=>{golfWelcome.classList.add('hidden');golfWelcome.classList.remove('closing');golfWelcome.setAttribute('aria-hidden','true');document.body.style.overflow='';},720)}
-function showGolfIntro(fullName){if(!golfWelcome)return;const firstName=String(fullName||'Jugador').trim().split(/\s+/)[0]||'Jugador';document.getElementById('golfWelcomeName').textContent=firstName;golfWelcome.classList.remove('hidden','closing');golfWelcome.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';golfIntroTimer=setTimeout(closeGolfIntro,12000)}
+function showGolfIntro(fullName){if(!golfWelcome)return;const firstName=String(fullName||'Jugador').trim().split(/\s+/)[0]||'Jugador';document.getElementById('golfWelcomeName').textContent=firstName;golfWelcome.classList.remove('hidden','closing');golfWelcome.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';golfIntroTimer=setTimeout(closeGolfIntro,14000)}
 btnSkipIntro?.addEventListener('click',closeGolfIntro);btnEnterClub?.addEventListener('click',closeGolfIntro);
 
 // --- AUTENTICACIÓN Y PERFIL ---
